@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>키맞추기 — 대장단지 따라가기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  :root{
+    --bg:#EEF1F6;
+    --paper:#FFFFFF;
+    --ink:#14181F;
+    --ink-soft:#5B6472;
+    --ink-faint:#9AA3B2;
+    --indigo:#26326B;
+    --indigo-deep:#171E3D;
+    --gold:#B9832A;
+    --gold-soft:#F4E6C4;
+    --brick:#B24A3D;
+    --brick-soft:#F3DFDA;
+    --sage:#5C7A5F;
+    --sage-soft:#DEE8DE;
+    --line:#E1E5EC;
+    --radius:22px;
+    font-size:16px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg);
+    font-family:'Pretendard', -apple-system, sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:32px 16px 60px;
+  }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  .serif{ font-family:'Noto Serif KR', serif; }
+
+  /* ---------- Brand header / signature ---------- */
+  .brandmark{
+    width:100%;
+    max-width:420px;
+    text-align:center;
+    margin-bottom:22px;
+  }
+  .bars{
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    gap:7px;
+    height:56px;
+    margin:0 auto 14px;
+    position:relative;
+  }
+  .bars::after{
+    content:'';
+    position:absolute;
+    left:-6px; right:-6px; top:2px;
+    height:0;
+    border-top:1.5px dashed var(--indigo);
+    opacity:.55;
+  }
+  .bar{
+    width:9px;
+    background:var(--gold);
+    border-radius:3px 3px 0 0;
+    transform-origin:bottom;
+    animation:rise 1.1s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .bar.lead{ background:var(--indigo); }
+  .bar:nth-child(1){height:34px; animation-delay:.02s}
+  .bar:nth-child(2){height:44px; animation-delay:.08s}
+  .bar:nth-child(3){height:29px; animation-delay:.14s}
+  .bar:nth-child(4){height:54px; animation-delay:.2s}
+  .bar:nth-child(5){height:39px; animation-delay:.26s}
+  .bar:nth-child(6){height:54px; animation-delay:.32s}
+  .bar:nth-child(7){height:31px; animation-delay:.38s}
+  @keyframes rise{ from{ transform:scaleY(0); opacity:0 } to{ transform:scaleY(1); opacity:1 } }
+  @media (prefers-reduced-motion: reduce){ .bar{ animation:none; } }
+
+  h1.title{
+    font-size:1.9rem;
+    font-weight:900;
+    letter-spacing:-.02em;
+    color:var(--indigo-deep);
+  }
+  p.subtitle{
+    font-size:.92rem;
+    color:var(--ink-soft);
+    margin-top:4px;
+    font-weight:500;
+    letter-spacing:-.01em;
+  }
+
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex;
+    gap:8px;
+    width:100%;
+    max-width:420px;
+    margin-bottom:18px;
+  }
+  .tab{
+    flex:1;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:9px 6px;
+    text-align:center;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .tab .num{
+    display:block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.68rem;
+    color:var(--ink-faint);
+    margin-bottom:2px;
+  }
+  .tab .lbl{
+    font-size:.78rem;
+    font-weight:600;
+    color:var(--ink-soft);
+  }
+  .tab.active{
+    background:var(--indigo-deep);
+    border-color:var(--indigo-deep);
+  }
+  .tab.active .num{ color:var(--gold); }
+  .tab.active .lbl{ color:#fff; }
+
+  /* ---------- Phone frame ---------- */
+  .frame{
+    width:390px;
+    max-width:100%;
+    height:780px;
+    max-height:82vh;
+    background:var(--indigo-deep);
+    border-radius:44px;
+    padding:12px;
+    box-shadow:0 30px 60px -20px rgba(23,30,61,.35), 0 2px 0 rgba(23,30,61,.06);
+  }
+  .screen-wrap{
+    width:100%;
+    height:100%;
+    background:var(--bg);
+    border-radius:32px;
+    overflow:hidden;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+  }
+  .statusbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:14px 22px 4px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.72rem;
+    color:var(--ink);
+    font-weight:600;
+    flex-shrink:0;
+  }
+  .statusbar .dots{ display:flex; gap:3px; align-items:center; }
+  .statusbar .dots span{ width:4px; height:4px; border-radius:50%; background:var(--ink); display:block; }
+
+  .screen{
+    flex:1;
+    overflow-y:auto;
+    padding:6px 18px 28px;
+    display:none;
+  }
+  .screen.active{ display:block; }
+  .screen::-webkit-scrollbar{ width:0; }
+
+  @media (max-width:480px){
+    body{ padding:20px 0 40px; }
+    .brandmark, .tabs{ padding:0 16px; }
+    .frame{ width:100%; height:calc(100vh - 210px); min-height:560px; border-radius:0; padding:0; box-shadow:none; }
+    .screen-wrap{ border-radius:0; }
+  }
+
+  /* ---------- shared UI bits ---------- */
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:.68rem;
+    letter-spacing:.06em;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    margin-bottom:2px;
+  }
+  .locbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 0 14px;
+  }
+  .locbar .loc{ font-weight:700; font-size:1rem; }
+  .locbar .loc span{ color:var(--ink-faint); font-weight:500; font-size:.86rem; }
+  .chip{
+    font-size:.7rem;
+    background:var(--paper);
+    border:1px solid var(--line);
+    padding:5px 10px;
+    border-radius:999px;
+    color:var(--ink-soft);
+    font-weight:600;
+  }
+
+  .card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:14px;
+  }
+  .leader-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    background:var(--indigo-deep);
+    color:var(--gold-soft);
+    font-size:.66rem;
+    font-weight:700;
+    padding:4px 9px 4px 8px;
+    border-radius:999px;
+    margin-bottom:10px;
+    letter-spacing:.02em;
+  }
+  .leader-badge::before{ content:'★'; color:var(--gold); font-size:.7rem; }
+
+  .complex-name{ font-size:1.28rem; font-weight:800; letter-spacing:-.01em; margin-bottom:2px; }
+  .complex-meta{ font-size:.78rem; color:var(--ink-soft); margin-bottom:14px; }
+
+  .price-row{ display:flex; align-items:baseline; gap:10px; margin-bottom:2px; }
+  .price{ font-family:'IBM Plex Mono', monospace; font-size:1.9rem; font-weight:600; letter-spacing:-.02em; }
+  .delta{ font-family:'IBM Plex Mono', monospace; font-size:.85rem; font-weight:600; padding:3px 8px; border-radius:8px; }
+  .delta.up{ color:var(--sage); background:var(--sage-soft); }
+  .price-label{ font-size:.72rem; color:var(--ink-faint); margin-bottom:14px; }
+
+  /* chart */
+  .chart-legend{ display:flex; gap:14px; margin-bottom:6px; font-size:.72rem; color:var(--ink-soft); font-weight:600;}
+  .chart-legend .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; }
+  svg.chart{ width:100%; display:block; overflow:visible; }
+  .regime-labels{ display:flex; margin-top:6px; gap:2px; }
+  .regime-labels .rl{
+    font-size:.6rem; color:var(--ink-soft); text-align:center; font-weight:600; line-height:1.25;
+    cursor:pointer; padding:5px 2px 6px; border-radius:8px; border:1px dashed transparent;
+    transition:background .12s ease;
+  }
+  .regime-labels .rl:active{ background:var(--paper); border-color:var(--line); }
+  .regime-labels .rl .q{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:12px; height:12px; border-radius:50%;
+    background:var(--indigo-deep); color:var(--gold-soft);
+    font-size:.52rem; font-weight:800; margin-top:2px;
+  }
+
+  /* ---------- policy modal ---------- */
+  .modal-overlay{
+    position:absolute; inset:0; background:rgba(20,24,31,.5);
+    display:none; align-items:flex-end; justify-content:center;
+    z-index:50; border-radius:32px;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal-sheet{
+    width:100%; background:var(--paper);
+    border-radius:22px 22px 0 0;
+    padding:20px 20px 24px;
+    animation:slideup .2s ease;
+    max-height:74%;
+    overflow-y:auto;
+  }
+  @keyframes slideup{ from{ transform:translateY(16px); opacity:0;} to{ transform:translateY(0); opacity:1;} }
+  .modal-handle{ width:36px; height:4px; background:var(--line); border-radius:99px; margin:0 auto 14px; }
+  .modal-eyebrow{
+    display:inline-block; font-family:'IBM Plex Mono', monospace; font-size:.66rem;
+    color:var(--ink-faint); margin-bottom:6px; letter-spacing:.03em;
+  }
+  .modal-title{ font-size:1.15rem; font-weight:800; margin-bottom:2px; }
+  .modal-tint{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+  .modal-range{ font-family:'IBM Plex Mono', monospace; font-size:.74rem; color:var(--ink-soft); margin-bottom:12px; }
+  .modal-desc{ font-size:.86rem; line-height:1.62; color:var(--ink); margin-bottom:10px; }
+  .modal-desc b{ color:var(--indigo-deep); }
+  .modal-close{
+    width:100%; background:var(--bg); border:1px solid var(--line); border-radius:12px;
+    padding:11px; font-weight:700; font-size:.84rem; color:var(--ink-soft); margin-top:6px; cursor:pointer;
+  }
+
+  .cta{
+    width:100%;
+    background:var(--indigo-deep);
+    color:#fff;
+    border:none;
+    border-radius:14px;
+    padding:14px;
+    font-size:.9rem;
+    font-weight:700;
+    font-family:'Pretendard', sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    cursor:pointer;
+    margin-top:4px;
+  }
+  .cta span.n{ color:var(--gold); }
+
+  /* screen 2: list */
+  .filters{ display:flex; gap:7px; margin-bottom:14px; overflow-x:auto; padding-bottom:2px;}
+  .filters .chip.on{ background:var(--indigo-deep); border-color:var(--indigo-deep); color:#fff; }
+
+  .unit-card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px 15px;
+    margin-bottom:10px;
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    cursor:pointer;
+    transition:border-color .12s ease, box-shadow .12s ease;
+  }
+  .unit-card:active{ background:var(--bg); }
+  .unit-card.selected{
+    border-color:var(--indigo-deep);
+    box-shadow:0 0 0 1.5px var(--indigo-deep) inset;
+  }
+  .unit-card.selected .unit-name::after{
+    content:'선택됨';
+    display:inline-block;
+    margin-left:7px;
+    font-size:.6rem;
+    font-weight:800;
+    color:var(--indigo-deep);
+    background:var(--gold-soft);
+    padding:2px 6px;
+    border-radius:6px;
+    vertical-align:middle;
+  }
+  .unit-left{ flex:1; min-width:0; }
+  .unit-name{ font-weight:700; font-size:.94rem; margin-bottom:3px; }
+  .unit-meta{ font-size:.7rem; color:var(--ink-faint); margin-bottom:8px; }
+  .sync-dots{ display:flex; gap:4px; align-items:center; }
+  .sync-dots .d{ width:7px; height:7px; border-radius:50%; background:var(--line); }
+  .sync-dots .d.on{ background:var(--gold); }
+  .sync-dots .d.na{ background:repeating-linear-gradient(45deg, var(--ink-faint), var(--ink-faint) 1px, transparent 1px, transparent 2px); }
+  .sync-dots .txt{ font-size:.68rem; color:var(--ink-soft); font-weight:700; margin-left:4px; }
+
+  .unit-right{ text-align:right; flex-shrink:0; }
+  .unit-price{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:.98rem; }
+  .unit-gap{ font-family:'IBM Plex Mono', monospace; font-size:.76rem; font-weight:700; color:var(--gold); margin-top:3px; }
+  .unit-spark{ width:64px; height:22px; margin-top:6px; }
+
+  /* screen 3: compare */
+  .backrow{ display:flex; align-items:center; gap:8px; padding:8px 0 4px; font-size:.82rem; color:var(--ink-soft); font-weight:600; }
+  .compare-header{ margin-bottom:12px; }
+  .vs-row{ display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+  .vs-row .who{ font-size:.85rem; font-weight:700; }
+  .vs-row .who.lead{ color:var(--indigo); }
+  .vs-row .who.sync{ color:var(--gold); }
+  .vs-row .p{ font-family:'IBM Plex Mono', monospace; font-size:.85rem; font-weight:600; margin-left:auto; }
+
+  .badge-grid{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+  .badge-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 12px;
+    border-radius:12px;
+    background:var(--paper);
+    border:1px solid var(--line);
+  }
+  .badge-row .mark{
+    width:22px; height:22px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.72rem; font-weight:800; color:#fff; flex-shrink:0;
+  }
+  .badge-row .mark.on{ background:var(--sage); }
+  .badge-row .mark.off{ background:var(--ink-faint); }
+  .badge-row .mark.na{ background:var(--ink-faint); opacity:.5; }
+  .badge-row .info{ flex:1; }
+  .badge-row .rname{ font-size:.8rem; font-weight:700; }
+  .badge-row .rperiod{ font-size:.66rem; color:var(--ink-faint); font-family:'IBM Plex Mono', monospace; }
+
+  .info-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  .info-item{ background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+  .info-item .k{ font-size:.66rem; color:var(--ink-faint); margin-bottom:3px; font-weight:600; }
+  .info-item .v{ font-size:.86rem; font-weight:700; font-family:'IBM Plex Mono', monospace; }
+
+  .section-title{ font-size:.98rem; font-weight:800; margin:18px 0 10px; }
+</style>
+</head>
+<body>
+
+  <div class="brandmark">
+    <div class="bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar lead"></div><div class="bar"></div><div class="bar lead"></div><div class="bar"></div>
+    </div>
+    <h1 class="title serif">키맞추기</h1>
+    <p class="subtitle">대장단지 따라가기</p>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-target="dashboard"><span class="num">01</span><span class="lbl">대시보드</span></div>
+    <div class="tab" data-target="list"><span class="num">02</span><span class="lbl">동조단지</span></div>
+    <div class="tab" data-target="compare"><span class="num">03</span><span class="lbl">단지비교</span></div>
+  </div>
+
+  <div class="frame">
+    <div class="screen-wrap">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="dots"><span></span><span></span><span></span></span>
+      </div>
+
+      <!-- ===================== SCREEN 1 : DASHBOARD ===================== -->
+      <div class="screen active" id="dashboard">
+        <div class="locbar">
+          <div class="loc">서울 강남구 대치동 <span>▾</span></div>
+          <div class="chip">지역 변경</div>
+        </div>
+
+        <div class="card">
+          <div class="leader-badge">대장단지</div>
+          <div class="complex-name" id="leaderName">대치 SK뷰</div>
+          <div class="complex-meta" id="leaderMeta">1,631세대 · 2016년 준공 · 전용 84㎡ 기준</div>
+
+          <div class="price-row">
+            <div class="price" id="leaderPrice">28.5억</div>
+            <div class="delta up" id="leaderDelta">+105.0%</div>
+          </div>
+          <div class="price-label" id="leaderPriceLabel">2017.05 → 2026.08</div>
+
+          <div class="chart-legend">
+            <span><span class="dot" style="background:var(--indigo)"></span><span id="leaderLegendName">대치 SK뷰</span> 실거래가 지수</span>
+          </div>
+          <svg class="chart" id="chart1" viewBox="0 0 340 150"></svg>
+          <div class="regime-labels" id="regimeLabels1"></div>
+        </div>
+
+        <button class="cta" id="ctaToList">이 대장단지와 동조하는 단지 <span class="n" id="ctaCount">12개</span> 보기 →</button>
+      </div>
+
+      <!-- ===================== SCREEN 2 : LIST ===================== -->
+      <div class="screen" id="list">
+        <div class="backrow" id="backToDashboard" style="cursor:pointer;">‹ &nbsp;대치 SK뷰 · 동조단지</div>
+
+        <div class="filters">
+          <div class="chip on">동조 4국면</div>
+          <div class="chip">동조 3국면+</div>
+          <div class="chip">가격차 큰순</div>
+          <div class="chip">세대수</div>
+        </div>
+
+        <div id="unitList"></div>
+      </div>
+
+      <!-- ===================== SCREEN 3 : COMPARE ===================== -->
+      <div class="screen" id="compare">
+        <div class="backrow" id="backToList" style="cursor:pointer;">‹ &nbsp;<span id="compareUnitName"></span></div>
+
+        <div class="card compare-header">
+          <div class="vs-row"><span class="who lead">● 대장 · <span id="compareLeaderName">대치 SK뷰</span></span><span class="p" id="compareLeaderPrice">28.5억</span></div>
+          <div class="vs-row"><span class="who sync" id="compareUnitName2"></span><span class="p" id="comparePrice"></span></div>
+          <div class="price-label" style="margin-top:2px;" id="compareSummary"></div>
+
+          <svg class="chart" id="chart2" viewBox="0 0 340 150" style="margin-top:8px;"></svg>
+          <div class="regime-labels" id="regimeLabels2"></div>
+        </div>
+
+        <div class="section-title">국면별 동조 여부</div>
+        <div class="badge-grid" id="badgeGrid"></div>
+
+        <div class="section-title">단지 정보</div>
+        <div class="info-grid" id="infoGrid"></div>
+      </div>
+
+<script type="application/json" id="pipelineData">{
+  "leader": {
+    "name": "래미안대치팰리스",
+    "meta": "- · 2015년 준공 · 전용 84㎡ 기준",
+    "currentPrice": 44.0,
+    "pts": [
+      [
+        0.0,
+        100.0
+      ],
+      [
+        0.009,
+        101.8
+      ],
+      [
+        0.018,
+        104.8
+      ],
+      [
+        0.027,
+        110.8
+      ],
+      [
+        0.036,
+        107.8
+      ],
+      [
+        0.0541,
+        116.8
+      ],
+      [
+        0.0631,
+        125.7
+      ],
+      [
+        0.0721,
+        134.7
+      ],
+      [
+        0.0991,
+        136.8
+      ],
+      [
+        0.1261,
+        138.9
+      ],
+      [
+        0.1351,
+        146.7
+      ],
+      [
+        0.2072,
+        140.7
+      ],
+      [
+        0.2162,
+        143.7
+      ],
+      [
+        0.2252,
+        149.7
+      ],
+      [
+        0.2342,
+        155.7
+      ],
+      [
+        0.2432,
+        165.9
+      ],
+      [
+        0.2523,
+        167.5
+      ],
+      [
+        0.2613,
+        167.1
+      ],
+      [
+        0.2703,
+        174.3
+      ],
+      [
+        0.2793,
+        177.8
+      ],
+      [
+        0.3243,
+        175.4
+      ],
+      [
+        0.3333,
+        179.6
+      ],
+      [
+        0.4324,
+        182.0
+      ],
+      [
+        0.4414,
+        186.8
+      ],
+      [
+        0.4505,
+        184.4
+      ],
+      [
+        0.4775,
+        192.2
+      ],
+      [
+        0.5315,
+        197.6
+      ],
+      [
+        0.6126,
+        178.4
+      ],
+      [
+        0.6216,
+        168.9
+      ],
+      [
+        0.6577,
+        185.6
+      ],
+      [
+        0.6667,
+        185.6
+      ],
+      [
+        0.6757,
+        191.6
+      ],
+      [
+        0.6847,
+        194.6
+      ],
+      [
+        0.6937,
+        197.6
+      ],
+      [
+        0.7027,
+        197.6
+      ],
+      [
+        0.7117,
+        193.4
+      ],
+      [
+        0.7387,
+        190.4
+      ],
+      [
+        0.7477,
+        197.6
+      ],
+      [
+        0.7568,
+        205.7
+      ],
+      [
+        0.7658,
+        196.4
+      ],
+      [
+        0.7838,
+        215.6
+      ],
+      [
+        0.7928,
+        218.6
+      ],
+      [
+        0.8108,
+        235.3
+      ],
+      [
+        0.8198,
+        212.6
+      ],
+      [
+        0.8378,
+        239.5
+      ],
+      [
+        0.8468,
+        244.0
+      ],
+      [
+        0.8649,
+        267.7
+      ],
+      [
+        0.8739,
+        281.4
+      ],
+      [
+        0.8829,
+        264.1
+      ],
+      [
+        0.9099,
+        149.7
+      ],
+      [
+        0.9189,
+        284.4
+      ],
+      [
+        0.955,
+        250.9
+      ],
+      [
+        0.973,
+        262.9
+      ],
+      [
+        0.982,
+        263.5
+      ]
+    ]
+  },
+  "units": [
+    {
+      "id": "complex-48",
+      "name": "경남아너스빌",
+      "meta": "- · 2002년 준공",
+      "gap": "−25.9억",
+      "syncFlags": [
+        true,
+        true,
+        null,
+        true
+      ],
+      "pts": [
+        [
+          0.0,
+          100.0
+        ],
+        [
+          0.018,
+          100.0
+        ],
+        [
+          0.0631,
+          110.0
+        ],
+        [
+          0.0721,
+          120.0
+        ],
+        [
+          0.1351,
+          125.3
+        ],
+        [
+          0.1441,
+          152.7
+        ],
+        [
+          0.2162,
+          130.4
+        ],
+        [
+          0.2432,
+          133.3
+        ],
+        [
+          0.2523,
+          160.0
+        ],
+        [
+          0.2613,
+          159.3
+        ],
+        [
+          0.2703,
+          138.7
+        ],
+        [
+          0.2793,
+          165.3
+        ],
+        [
+          0.2973,
+          198.7
+        ],
+        [
+          0.3243,
+          158.7
+        ],
+        [
+          0.3423,
+          198.0
+        ],
+        [
+          0.3784,
+          196.7
+        ],
+        [
+          0.3874,
+          197.3
+        ],
+        [
+          0.4324,
+          211.3
+        ],
+        [
+          0.4595,
+          219.6
+        ],
+        [
+          0.4865,
+          228.0
+        ],
+        [
+          0.6577,
+          199.3
+        ],
+        [
+          0.7658,
+          202.7
+        ],
+        [
+          0.7748,
+          204.0
+        ],
+        [
+          0.7928,
+          201.3
+        ],
+        [
+          0.8198,
+          196.0
+        ],
+        [
+          0.8468,
+          195.2
+        ],
+        [
+          0.8649,
+          202.7
+        ],
+        [
+          0.8829,
+          226.7
+        ],
+        [
+          0.8919,
+          204.7
+        ],
+        [
+          0.9009,
+          203.3
+        ],
+        [
+          0.9189,
+          245.3
+        ],
+        [
+          0.9279,
+          213.3
+        ],
+        [
+          0.9459,
+          200.0
+        ],
+        [
+          0.964,
+          226.7
+        ],
+        [
+          0.973,
+          242.7
+        ],
+        [
+          0.982,
+          241.3
+        ]
+      ],
+      "currentPrice": 18.1,
+      "syncIndex": 1.0,
+      "passesFilter": true,
+      "info": {
+        "households": "-",
+        "year": "2002년",
+        "size": "전용 84㎡",
+        "recent": "26.06 · 18.1억"
+      }
+    },
+    {
+      "id": "complex-116",
+      "name": "롯데캐슬프레미어",
+      "meta": "- · 2007년 준공",
+      "gap": "−11.2억",
+      "syncFlags": [
+        true,
+        true,
+        null,
+        true
+      ],
+      "pts": [
+        [
+          0.0,
+          100.0
+        ],
+        [
+          0.009,
+          101.8
+        ],
+        [
+          0.036,
+          108.1
+        ],
+        [
+          0.1171,
+          130.6
+        ],
+        [
+          0.1351,
+          134.3
+        ],
+        [
+          0.2162,
+          131.4
+        ],
+        [
+          0.2342,
+          141.7
+        ],
+        [
+          0.2432,
+          142.8
+        ],
+        [
+          0.2613,
+          150.9
+        ],
+        [
+          0.2703,
+          165.3
+        ],
+        [
+          0.3333,
+          171.2
+        ],
+        [
+          0.3604,
+          174.9
+        ],
+        [
+          0.3874,
+          180.1
+        ],
+        [
+          0.3964,
+          188.2
+        ],
+        [
+          0.4324,
+          174.9
+        ],
+        [
+          0.4865,
+          198.2
+        ],
+        [
+          0.6667,
+          174.9
+        ],
+        [
+          0.6757,
+          190.4
+        ],
+        [
+          0.7568,
+          188.2
+        ],
+        [
+          0.7748,
+          190.8
+        ],
+        [
+          0.7838,
+          203.0
+        ],
+        [
+          0.8378,
+          228.8
+        ],
+        [
+          0.8468,
+          225.1
+        ],
+        [
+          0.8559,
+          225.1
+        ],
+        [
+          0.9099,
+          243.5
+        ],
+        [
+          0.9459,
+          251.7
+        ],
+        [
+          0.973,
+          220.7
+        ],
+        [
+          0.991,
+          242.1
+        ]
+      ],
+      "currentPrice": 32.8,
+      "syncIndex": 1.0,
+      "passesFilter": true,
+      "info": {
+        "households": "-",
+        "year": "2007년",
+        "size": "전용 84㎡",
+        "recent": "26.07 · 32.8억"
+      }
+    },
+    {
+      "id": "complex-128",
+      "name": "삼성동힐스테이트 1단지",
+      "meta": "- · 2008년 준공",
+      "gap": "−8.1억",
+      "syncFlags": [
+        true,
+        true,
+        null,
+        true
+      ],
+      "pts": [
+        [
+          0.0,
+          100.0
+        ],
+        [
+          0.009,
+          98.6
+        ],
+        [
+          0.018,
+          110.9
+        ],
+        [
+          0.027,
+          103.6
+        ],
+        [
+          0.036,
+          112.0
+        ],
+        [
+          0.045,
+          114.5
+        ],
+        [
+          0.0541,
+          119.6
+        ],
+        [
+          0.0721,
+          131.9
+        ],
+        [
+          0.0901,
+          134.1
+        ],
+        [
+          0.0991,
+          127.9
+        ],
+        [
+          0.1351,
+          134.1
+        ],
+        [
+          0.1712,
+          137.7
+        ],
+        [
+          0.1892,
+          147.1
+        ],
+        [
+          0.2072,
+          130.4
+        ],
+        [
+          0.2162,
+          141.3
+        ],
+        [
+          0.2252,
+          144.9
+        ],
+        [
+          0.2342,
+          144.6
+        ],
+        [
+          0.2432,
+          147.8
+        ],
+        [
+          0.2523,
+          148.6
+        ],
+        [
+          0.2703,
+          166.7
+        ],
+        [
+          0.2793,
+          173.9
+        ],
+        [
+          0.2973,
+          170.3
+        ],
+        [
+          0.3243,
+          160.1
+        ],
+        [
+          0.3333,
+          163.0
+        ],
+        [
+          0.3514,
+          171.7
+        ],
+        [
+          0.3784,
+          152.2
+        ],
+        [
+          0.3874,
+          159.4
+        ],
+        [
+          0.3964,
+          175.4
+        ],
+        [
+          0.4054,
+          187.0
+        ],
+        [
+          0.4144,
+          187.7
+        ],
+        [
+          0.4324,
+          163.8
+        ],
+        [
+          0.4775,
+          201.4
+        ],
+        [
+          0.5315,
+          195.7
+        ],
+        [
+          0.5405,
+          145.7
+        ],
+        [
+          0.5676,
+          202.9
+        ],
+        [
+          0.6216,
+          171.7
+        ],
+        [
+          0.6396,
+          180.4
+        ],
+        [
+          0.6577,
+          185.5
+        ],
+        [
+          0.6757,
+          195.7
+        ],
+        [
+          0.6847,
+          201.4
+        ],
+        [
+          0.7117,
+          184.8
+        ],
+        [
+          0.7387,
+          179.0
+        ],
+        [
+          0.7477,
+          191.3
+        ],
+        [
+          0.7658,
+          186.6
+        ],
+        [
+          0.7748,
+          198.6
+        ],
+        [
+          0.7838,
+          204.3
+        ],
+        [
+          0.7928,
+          206.5
+        ],
+        [
+          0.8018,
+          171.7
+        ],
+        [
+          0.8108,
+          202.9
+        ],
+        [
+          0.8198,
+          208.7
+        ],
+        [
+          0.8288,
+          208.0
+        ],
+        [
+          0.8378,
+          217.4
+        ],
+        [
+          0.8468,
+          231.2
+        ],
+        [
+          0.8559,
+          224.6
+        ],
+        [
+          0.8649,
+          231.2
+        ],
+        [
+          0.8739,
+          252.2
+        ],
+        [
+          0.8829,
+          246.4
+        ],
+        [
+          0.9009,
+          231.9
+        ],
+        [
+          0.9099,
+          253.6
+        ],
+        [
+          0.9189,
+          260.9
+        ],
+        [
+          0.9279,
+          246.4
+        ],
+        [
+          0.9459,
+          257.2
+        ],
+        [
+          0.964,
+          240.6
+        ],
+        [
+          0.973,
+          244.9
+        ],
+        [
+          0.982,
+          260.9
+        ],
+        [
+          0.991,
+          260.1
+        ]
+      ],
+      "currentPrice": 35.9,
+      "syncIndex": 1.0,
+      "passesFilter": true,
+      "info": {
+        "households": "-",
+        "year": "2008년",
+        "size": "전용 84㎡",
+        "recent": "26.07 · 35.9억"
+      }
+    },
+    {
+      "id": "complex-28",
+      "name": "선경1차(1동-7동)",
+      "meta": "- · 1983년 준공",
+      "gap": "−7.0억",
+      "syncFlags": [
+        true,
+        true,
+        null,
+        true
+      ],
+      "pts": [
+        [
+          0.009,
+          100.0
+        ],
+        [
+          0.036,
+          104.6
+        ],
+        [
+          0.045,
+          107.7
+        ],
+        [
+          0.0631,
+          116.9
+        ],
+        [
+          0.0811,
+          104.6
+        ],
+        [
+          0.0901,
+          120.0
+        ],
+        [
+          0.1261,
+          124.9
+        ],
+        [
+          0.1351,
+          131.7
+        ],
+        [
+          0.2072,
+          126.2
+        ],
+        [
+          0.2252,
+          139.4
+        ],
+        [
+          0.2523,
+          144.6
+        ],
+        [
+          0.2613,
+          149.5
+        ],
+        [
+          0.2703,
+          149.5
+        ],
+        [
+          0.2793,
+          162.2
+        ],
+        [
+          0.3063,
+          159.8
+        ],
+        [
+          0.3333,
+          164.0
+        ],
+        [
+          0.5315,
+          196.9
+        ],
+        [
+          0.7387,
+          180.6
+        ],
+        [
+          0.7568,
+          190.8
+        ],
+        [
+          0.7658,
+          188.9
+        ],
+        [
+          0.7748,
+          196.6
+        ],
+        [
+          0.8378,
+          200.0
+        ],
+        [
+          0.8468,
+          155.7
+        ],
+        [
+          0.9009,
+          233.8
+        ],
+        [
+          0.964,
+          227.7
+        ]
+      ],
+      "currentPrice": 37.0,
+      "syncIndex": 1.0,
+      "passesFilter": true,
+      "info": {
+        "households": "-",
+        "year": "1983년",
+        "size": "전용 84㎡",
+        "recent": "26.04 · 37.0억"
+      }
+    }
+  ],
+  "excluded_count": 240
+}</script>
+
+      <!-- ===================== POLICY MODAL ===================== -->
+      <div class="modal-overlay" id="policyModal">
+        <div class="modal-sheet">
+          <div class="modal-handle"></div>
+          <span class="modal-eyebrow" id="modalEyebrow">국면 01</span>
+          <div class="modal-title"><span class="modal-tint" id="modalTint"></span><span id="modalTitle"></span></div>
+          <div class="modal-range" id="modalRange"></div>
+          <div class="modal-desc" id="modalDesc"></div>
+          <button class="modal-close" id="modalClose">닫기</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  // ---------- tab switching ----------
+  function goToScreen(target){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.target===target));
+    document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active', s.id===target));
+  }
+  document.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click', ()=> goToScreen(tab.dataset.target));
+  });
+  document.getElementById('ctaToList').addEventListener('click', ()=> goToScreen('list'));
+  document.getElementById('backToDashboard').addEventListener('click', ()=> goToScreen('dashboard'));
+  document.getElementById('backToList').addEventListener('click', ()=> goToScreen('list'));
+
+  // ---------- regime definitions ----------
+  const regimes = [
+    {
+      label:'규제강화기', period:'17.05–19.12', full:'2017.05 – 2019.12', width:2.6, tint:'#F3DFDA', dot:'#B24A3D',
+      desc:`문재인 정부 초중반 고강도 수요 억제기예요. <b>8.2대책(2017)</b>과 <b>9.13대책(2018)</b>으로 투기과열지구·조정대상지역이 확대 지정되고, 다주택자 양도세 중과와 종합부동산세 강화, LTV·DTI 대출규제가 이어졌어요. 이후 <b>12.16대책(2019)</b>까지 규제가 누적된 구간이에요.`
+    },
+    {
+      label:'급등기', period:'20.01–22.04', full:'2020.01 – 2022.04', width:2.3, tint:'#DEE8DE', dot:'#5C7A5F',
+      desc:`<b>임대차3법(2020.07 시행)</b>으로 계약갱신청구권·전월세상한제·전월세신고제가 도입됐고, 6·17·7·10대책으로 종부세 최고세율이 인상됐어요. 동시에 저금리 기조와 유동성 확대가 겹치며 전국적으로 가격이 급등한 국면이에요.`
+    },
+    {
+      label:'하락기', period:'22.05–23.12', full:'2022.05 – 2023.12', width:1.6, tint:'#F3DFDA', dot:'#B24A3D',
+      desc:`윤석열 정부 출범(2022.05)과 함께 한국은행의 급격한 기준금리 인상이 맞물리며 거래가 급감하고 가격이 조정된 구간이에요. <b>2023.1.3대책</b>으로 강남3구·용산을 제외한 규제지역이 대부분 해제됐고, <b>특례보금자리론(2023.01.30 접수 개시)</b>이 하락세를 진정시켰어요.`
+    },
+    {
+      label:'회복기', period:'24.01–26.08', full:'2024.01 – 2026.08', width:2.6, tint:'#F4E6C4', dot:'#B9832A',
+      desc:`<b>스트레스 DSR</b>이 2024년 2단계, 2025년 3단계로 단계적으로 강화되며 대출 문턱이 높아졌고, 동시에 재건축·정비사업 규제완화가 병행된 구간이에요. 강남권 등 핵심 입지를 중심으로 반등하며 지역별 양극화가 뚜렷해졌어요.`
+    },
+  ];
+  const total = regimes.reduce((a,r)=>a+r.width,0);
+  let acc = 0;
+  const bounds = regimes.map(r=>{ const s=acc/total; acc+=r.width; return {...r, start:s, end:acc/total}; });
+
+  // ---------- 파이프라인 산출 데이터 로드 ----------
+  // batch_runner.py → export_for_frontend.py가 실제 DB(keymatch.db)에서 뽑아낸 값.
+  // 하드코딩된 mock 배열이 아니라 국토부 API 파이프라인 → 동조판정 엔진을 거친 결과임.
+  const pipelineData = JSON.parse(document.getElementById('pipelineData').textContent);
+  const leaderPts = pipelineData.leader.pts;
+  const leaderPrice = { current: pipelineData.leader.currentPrice, name: pipelineData.leader.name, meta: pipelineData.leader.meta };
+  const units = pipelineData.units;
+
+  function fmtEok(v){ return v.toFixed(1)+'억'; }
+
+  function sparkPoints(pts){
+    const vals = pts.map(p=>p[1]);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    return pts.map(p=>{
+      const x = (p[0]*100).toFixed(1);
+      const y = (28 - ((p[1]-min)/(max-min))*24 - 2).toFixed(1);
+      return `${x},${y}`;
+    }).join(' ');
+  }
+
+  // ---------- 대장단지 카드 채우기 (더 이상 하드코딩 아님) ----------
+  document.getElementById('leaderName').textContent = leaderPrice.name;
+  document.getElementById('leaderMeta').textContent = leaderPrice.meta;
+  document.getElementById('leaderPrice').textContent = fmtEok(leaderPrice.current);
+  document.getElementById('leaderLegendName').textContent = leaderPrice.name;
+  document.getElementById('compareLeaderName').textContent = leaderPrice.name;
+  document.getElementById('compareLeaderPrice').textContent = fmtEok(leaderPrice.current);
+  document.getElementById('ctaCount').textContent = `${units.length}개`;
+  {
+    const startIdx = leaderPts[0][1], endIdx = leaderPts[leaderPts.length-1][1];
+    const totalReturn = (endIdx/startIdx - 1) * 100;
+    document.getElementById('leaderDelta').textContent = `${totalReturn>=0?'+':''}${totalReturn.toFixed(1)}%`;
+    document.getElementById('leaderPriceLabel').textContent = '2017.05 → 2026.08 실거래가 지수 (base=100)';
+  }
+
+  let selectedUnitId = units[0].id;
+
+  function renderUnitList(){
+    const wrap = document.getElementById('unitList');
+    wrap.innerHTML = units.map(u=>{
+      const judgable = u.syncFlags.filter(f=>f!==null).length;
+      const syncCount = u.syncFlags.filter(f=>f===true).length;
+      const dots = u.syncFlags.map(f=>`<span class="d ${f===true?'on':(f===null?'na':'')}"></span>`).join('');
+      return `
+        <div class="unit-card ${u.id===selectedUnitId?'selected':''}" data-id="${u.id}">
+          <div class="unit-left">
+            <div class="unit-name">${u.name}</div>
+            <div class="unit-meta">${u.meta}</div>
+            <div class="sync-dots">${dots}<span class="txt">${syncCount}/${judgable} 국면 동조</span></div>
+          </div>
+          <div class="unit-right">
+            <div class="unit-price">${fmtEok(u.currentPrice)}</div>
+            <div class="unit-gap">${u.gap}</div>
+            <svg class="unit-spark" viewBox="0 0 100 30"><polyline points="${sparkPoints(u.pts)}" fill="none" stroke="#B9832A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>`;
+    }).join('');
+    wrap.querySelectorAll('.unit-card').forEach(card=>{
+      card.addEventListener('click', ()=>{
+        selectedUnitId = card.dataset.id;
+        renderUnitList();
+        renderCompare();
+        goToScreen('compare');
+      });
+    });
+  }
+  renderUnitList();
+
+  function renderCompare(){
+    const u = units.find(x=>x.id===selectedUnitId);
+    const judgable = u.syncFlags.filter(f=>f!==null).length;
+    const syncCount = u.syncFlags.filter(f=>f===true).length;
+    document.getElementById('compareUnitName').textContent = u.name;
+    document.getElementById('compareUnitName2').textContent = '● ' + u.name;
+    document.getElementById('comparePrice').textContent = fmtEok(u.currentPrice);
+    document.getElementById('compareSummary').textContent = `현재 갭 ${u.gap} · ${syncCount}개 국면 동조 (판정가능 ${judgable}개 중)`;
+    renderChart('chart2', [{pts:leaderPts, color:'#26326B'}, {pts:u.pts, color:'#B9832A'}]);
+
+    const badgeGrid = document.getElementById('badgeGrid');
+    badgeGrid.innerHTML = bounds.map((b,i)=>{
+      const f = u.syncFlags[i];
+      const markClass = f===true ? 'on' : (f===null ? 'na' : 'off');
+      const markText = f===true ? '✓' : (f===null ? '−' : '✕');
+      return `
+      <div class="badge-row">
+        <div class="mark ${markClass}">${markText}</div>
+        <div class="info">
+          <div class="rname">${b.label}</div>
+          <div class="rperiod">${b.period}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    const infoGrid = document.getElementById('infoGrid');
+    infoGrid.innerHTML = `
+      <div class="info-item"><div class="k">세대수</div><div class="v">${u.info.households}</div></div>
+      <div class="info-item"><div class="k">준공년도</div><div class="v">${u.info.year}</div></div>
+      <div class="info-item"><div class="k">기준 평형</div><div class="v">${u.info.size}</div></div>
+      <div class="info-item"><div class="k">최근 거래</div><div class="v">${u.info.recent}</div></div>
+    `;
+  }
+
+  function renderChart(svgId, series, showRegimes){
+    const svg = document.getElementById(svgId);
+    const W=340,H=150, padL=6, padR=6, padT=10, padB=6;
+    const allVals = series.flatMap(s=>s.pts.map(p=>p[1]));
+    const min=Math.min(...allVals), max=Math.max(...allVals);
+    const x = t => padL + t*(W-padL-padR);
+    const y = v => padT + (1-(v-min)/(max-min))*(H-padT-padB);
+
+    let svgContent = '';
+    // regime background bands (clickable)
+    bounds.forEach((b,i)=>{
+      svgContent += `<rect class="regime-hit" data-idx="${i}" x="${x(b.start)}" y="0" width="${x(b.end)-x(b.start)}" height="${H}" fill="${b.tint}" opacity="0.55" style="cursor:pointer;"/>`;
+    });
+    // divider lines
+    bounds.slice(1).forEach(b=>{
+      svgContent += `<line x1="${x(b.start)}" y1="0" x2="${x(b.start)}" y2="${H}" stroke="#C9CFDA" stroke-width="1" stroke-dasharray="2,3"/>`;
+    });
+    // lines
+    series.forEach(s=>{
+      const pts = s.pts.map(p=>`${x(p[0])},${y(p[1])}`).join(' ');
+      svgContent += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+      const last = s.pts[s.pts.length-1];
+      svgContent += `<circle cx="${x(last[0])}" cy="${y(last[1])}" r="3.6" fill="${s.color}"/>`;
+    });
+    svg.innerHTML = svgContent;
+    svg.querySelectorAll('.regime-hit').forEach(rect=>{
+      rect.addEventListener('click', ()=> openPolicyModal(parseInt(rect.dataset.idx, 10)));
+    });
+  }
+
+  renderChart('chart1', [{pts:leaderPts, color:'#26326B'}]);
+
+  function renderRegimeLabels(id){
+    const el = document.getElementById(id);
+    el.innerHTML = bounds.map((b,i)=>
+      `<div class="rl" style="flex:${b.width}" data-idx="${i}">${b.label}<br>${b.period}<br><span class="q">?</span></div>`
+    ).join('');
+    el.querySelectorAll('.rl').forEach(node=>{
+      node.addEventListener('click', ()=> openPolicyModal(parseInt(node.dataset.idx, 10)));
+    });
+  }
+  renderRegimeLabels('regimeLabels1');
+  renderRegimeLabels('regimeLabels2');
+
+  // ---------- policy modal ----------
+  function openPolicyModal(idx){
+    const r = regimes[idx];
+    const screenWrap = document.querySelector('.screen.active') ? document.querySelector('.screen.active').closest('.screen-wrap') : document.querySelector('.screen-wrap');
+    document.getElementById('modalEyebrow').textContent = `국면 ${String(idx+1).padStart(2,'0')} · ${regimes.length}개 중`;
+    document.getElementById('modalTitle').textContent = r.label;
+    document.getElementById('modalTint').style.background = r.dot;
+    document.getElementById('modalRange').textContent = r.full;
+    document.getElementById('modalDesc').innerHTML = r.desc;
+    document.getElementById('policyModal').classList.add('show');
+  }
+  document.getElementById('modalClose').addEventListener('click', ()=>{
+    document.getElementById('policyModal').classList.remove('show');
+  });
+  document.getElementById('policyModal').addEventListener('click', (e)=>{
+    if(e.target.id==='policyModal') e.target.classList.remove('show');
+  });
+
+  // ---------- initial render ----------
+  renderCompare();
+</script>
+</body>
+</html>
