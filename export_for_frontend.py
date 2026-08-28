@@ -14,6 +14,8 @@ import db
 
 load_dotenv()
 
+DEFAULT_REGION_CODE = '1168010600'  # 대치동 (batch_runner.GANGNAM_DONG_CODES와 동일한 값)
+
 
 def month_index(ym: str) -> float:
     """ym을 전체 타임라인(2017-05~2026-08) 기준 0~1 t값으로 변환"""
@@ -30,12 +32,17 @@ def series_to_pts(rows: list[tuple], base_price: float) -> list[list[float]]:
     return [[month_index(ym), round(price / base_price * 100, 1)] for ym, price in rows]
 
 
-def export() -> dict:
+def export(region_code: str = DEFAULT_REGION_CODE) -> dict:
     conn = db.get_conn()
 
-    leader_id = conn.execute(
-        "SELECT complex_id FROM leader_complexes ORDER BY as_of DESC LIMIT 1"
-    ).fetchone()[0]
+    row = conn.execute(
+        "SELECT complex_id FROM leader_complexes WHERE region_code=%s ORDER BY as_of DESC LIMIT 1",
+        (region_code,)
+    ).fetchone()
+    if row is None:
+        conn.close()
+        raise RuntimeError(f"region_code={region_code}의 대장단지 판정 결과가 없음 — recompute() 먼저 실행 필요")
+    leader_id = row[0]
 
     # 단지마다 왕복 쿼리하면 원격 DB에서 느림 — 필요한 테이블 전체를 한 번씩만 긁어서
     # 메모리(dict)에서 조합함.

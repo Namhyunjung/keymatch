@@ -9,9 +9,22 @@ apt_trade_connector.py(실거래가)의 apt_seq와 이 API의 kaptCode는 서로
 from __future__ import annotations
 
 import difflib
+import re
 from typing import Optional
 
 import requests
+
+
+def _normalize_name(name: str) -> str:
+    """단지명 유사도 비교용 정규화.
+    실거래가 API 이름엔 '현대14차(203,204,205,206동)'처럼 동수 목록이 괄호로 붙는데,
+    이게 붙으면 문자열 전체 길이가 늘어나서 SequenceMatcher 유사도가 크게 희석됨
+    (예: '현대14차(203,204,205,206동)' vs '대치현대' 유사도가 0.15밖에 안 나옴).
+    괄호/흔한 접미사/공백을 지우고 비교하면 진짜 같은 단지끼리 훨씬 잘 붙는다."""
+    name = re.sub(r'\([^)]*\)', '', name)
+    for token in ('아파트', 'APT', 'apt', '단지'):
+        name = name.replace(token, '')
+    return re.sub(r'\s+', '', name).strip()
 
 LIST_URL = "https://apis.data.go.kr/1613000/AptListService4/getLegaldongAptList4"
 BASIS_URL = "https://apis.data.go.kr/1613000/AptBasisInfoServiceV5/getAphusBassInfoV5"
@@ -85,10 +98,15 @@ class HouseholdsResolver:
         if not candidates:
             return None, None, None
 
-        names = [c['kaptName'] for c in candidates]
+        target_norm = _normalize_name(complex_name)
+        norm_to_names = {}  # 정규화된 이름 -> 원본 kaptName (동명 정규화 충돌 시 첫번째만)
+        for c in candidates:
+            norm_to_names.setdefault(_normalize_name(c['kaptName']), c['kaptName'])
+
         # 이름 유사도 상위 몇 개를 준공년도로 재검증 (동명이인/유사명 단지 오매칭 방지)
-        close = difflib.get_close_matches(complex_name, names, n=3, cutoff=self.name_cutoff)
-        for name in close:
+        close = difflib.get_close_matches(target_norm, list(norm_to_names.keys()), n=3, cutoff=self.name_cutoff)
+        for norm_name in close:
+            name = norm_to_names[norm_name]
             item = next(c for c in candidates if c['kaptName'] == name)
             basis = self._basis(item['kaptCode'])
             if basis is None or not basis.get('kaptUsedate') or not basis.get('kaptdaCnt'):
@@ -96,6 +114,6 @@ class HouseholdsResolver:
             api_built_year = int(str(basis['kaptUsedate'])[:4])
             if built_year is not None and abs(api_built_year - built_year) > 1:
                 continue  # 준공년도 안 맞음 — 다른 단지로 봄
-            score = difflib.SequenceMatcher(None, complex_name, name).ratio()
+            score = difflib.SequenceMatcher(None, target_norm, norm_name).ratio()
             return int(float(basis['kaptdaCnt'])), item['kaptCode'], round(score, 2)
         return None, None, None

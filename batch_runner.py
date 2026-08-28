@@ -233,14 +233,21 @@ def transform_and_load(conn, raw: pd.DataFrame) -> int:
 # RECOMPUTE: 대장단지 판정 + 국면별 상승률 + 동조지수
 # ------------------------------------------------------------
 def recompute(conn):
+    """
+    동(region_code) 단위로 각각 대장단지를 뽑고 그 동 안의 단지끼리만 동조판정한다.
+    (예전엔 강남구 14개 동을 다 섞어서 1등 하나만 뽑았음 — 그래서 압구정동 단지가
+    "서울 강남구 대치동" 화면에 대장단지로 뜨는 모순이 생겼음. 동조판정은 원래
+    "같은 생활권 내에서 대장 따라가는 단지"를 찾는 거라, 행정동을 안 나누면
+    비교 자체가 의미가 없음.)
+    """
     log.info("RECOMPUTE 시작")
     params = AlgoParams()
     pyeong_group_id = conn.execute("SELECT pyeong_group_id FROM pyeong_groups LIMIT 1").fetchone()[0]
 
-    complexes = conn.execute("SELECT complex_id, apt_seq, complex_name FROM complexes").fetchall()
+    complexes = conn.execute("SELECT complex_id, apt_seq, complex_name, region_code FROM complexes").fetchall()
 
     # 단지마다 매번 SELECT 왕복하면 원격 DB에서 느림 — 이 평형의 월별가격 전체를 한 번에 긁어서
-    # 메모리에서 단지별로 나눔 (pick_leader용 price_df도 같은 조회 재사용)
+    # 메모리에서 단지별로 나눔
     all_monthly = pd.DataFrame(
         conn.execute(
             "SELECT complex_id, ym, rep_price_10k, txn_count FROM monthly_price WHERE pyeong_group_id=%s ORDER BY ym",
@@ -257,74 +264,82 @@ def recompute(conn):
     def load_monthly(complex_id: int) -> pd.DataFrame:
         return monthly_by_complex.get(complex_id, empty_monthly)
 
-    latest_prices = []
-    for cid, apt_seq, name in complexes:
-        m = load_monthly(cid)
-        if m.empty:
-            continue
-        latest_prices.append((cid, apt_seq, name, m.iloc[-1]['rep_price_10k']))
-
-    # 대장단지 판정: 국면 종료시점마다 상위 10% 안에 몇 번 들었는지(순위안정성) — sync_engine.pick_leader()
-    price_df = all_monthly[['complex_id', 'ym', 'rep_price_10k']].rename(columns={'rep_price_10k': 'price_per_pyeong'})
-    ranking = pick_leader(price_df, REGIMES, params)
-    if ranking.empty:
-        raise RuntimeError("대장단지 판정 불가 — 국면 종료시점에 거래 데이터 없음")
-    leader_id = int(ranking.iloc[0]['complex_id'])
-    stable_regimes = int(ranking.iloc[0]['stable_regimes'])
-    leader_apt_seq, leader_name = next((a, n) for cid, a, n in complexes if cid == leader_id)
-    log.info(
-        f"대장단지 순위안정성: stable_regimes={stable_regimes}/{len(REGIMES)} "
-        f"(상위 {int(params.leader_top_pct*100)}% 기준)"
-    )
-    log.info(f"대장단지 판정: {leader_name} ({leader_apt_seq})")
-
     conn.execute("DELETE FROM leader_complexes")
-    conn.execute(
-        """INSERT INTO leader_complexes (region_code, pyeong_group_id, complex_id, stable_regimes, as_of)
-           VALUES (%s, %s, %s, %s, %s)""",
-        (GANGNAM_REGION_CODE, pyeong_group_id, leader_id, stable_regimes, datetime.now(timezone.utc).date())
-    )
-
-    leader_monthly = load_monthly(leader_id)
     conn.execute("DELETE FROM regime_returns")
     conn.execute("DELETE FROM sync_summary")
 
-    # 원격 DB라 후보 단지 수만큼 row-by-row insert하면 왕복비용이 큼 — 모아서 한번에 넣음
+    leader_rows = []
     regime_return_rows = []
     sync_summary_rows = []
+    as_of = datetime.now(timezone.utc).date()
+    updated_at = datetime.now(timezone.utc)
 
-    for regime in REGIMES:
-        stat = compute_regime_return(leader_monthly, regime, params)
-        rr = stat['return_rate']
-        regime_return_rows.append((
-            leader_id, pyeong_group_id, regime.regime_id,
-            float(rr) if rr is not None else None,
-            int(stat['txn_count_regime']), bool(stat['is_judgable'])
-        ))
-
-    for cid, apt_seq, name, _ in latest_prices:
-        if cid == leader_id:
+    regions = sorted({c[3] for c in complexes})
+    for region_code in regions:
+        region_complexes = [c for c in complexes if c[3] == region_code]
+        if len(region_complexes) < 2:
+            log.info(f"[{region_code}] 단지 {len(region_complexes)}개뿐 — 대장단지 판정 스킵")
             continue
-        cand_monthly = load_monthly(cid)
-        result = evaluate_candidate(leader_monthly, cand_monthly, REGIMES, params)
 
-        for r in result['per_regime']:
-            cr = r['candidate_return']
+        region_cids = {c[0] for c in region_complexes}
+        region_price_df = (
+            all_monthly[all_monthly['complex_id'].isin(region_cids)][['complex_id', 'ym', 'rep_price_10k']]
+            .rename(columns={'rep_price_10k': 'price_per_pyeong'})
+        )
+        ranking = pick_leader(region_price_df, REGIMES, params)
+        if ranking.empty:
+            log.info(f"[{region_code}] 대장단지 판정 불가 — 국면 종료시점 데이터 없음, 스킵")
+            continue
+
+        leader_id = int(ranking.iloc[0]['complex_id'])
+        stable_regimes = int(ranking.iloc[0]['stable_regimes'])
+        leader_apt_seq, leader_name = next((c[1], c[2]) for c in region_complexes if c[0] == leader_id)
+        log.info(
+            f"[{region_code}] 대장단지: {leader_name} ({leader_apt_seq}) "
+            f"stable_regimes={stable_regimes}/{len(REGIMES)}"
+        )
+        leader_rows.append((region_code, pyeong_group_id, leader_id, stable_regimes, as_of))
+
+        leader_monthly = load_monthly(leader_id)
+        for regime in REGIMES:
+            stat = compute_regime_return(leader_monthly, regime, params)
+            rr = stat['return_rate']
             regime_return_rows.append((
-                cid, pyeong_group_id, r['regime_id'],
-                float(cr) if cr is not None else None, None, bool(r['judgable'])
+                leader_id, pyeong_group_id, regime.regime_id,
+                float(rr) if rr is not None else None,
+                int(stat['txn_count_regime']), bool(stat['is_judgable'])
             ))
 
         leader_price = int(leader_monthly.iloc[-1]['rep_price_10k'])
-        cand_price = int(cand_monthly.iloc[-1]['rep_price_10k']) if not cand_monthly.empty else None
-        gap = (cand_price - leader_price) if cand_price is not None else None
+        for cid, apt_seq, name, _ in region_complexes:
+            if cid == leader_id:
+                continue
+            cand_monthly = load_monthly(cid)
+            if cand_monthly.empty:
+                continue
+            result = evaluate_candidate(leader_monthly, cand_monthly, REGIMES, params)
 
-        sync_summary_rows.append((
-            GANGNAM_REGION_CODE, pyeong_group_id, leader_id, cid, int(result['sync_count']), int(result['judgable_count']),
-            float(result['sync_index']), int(gap) if gap is not None else None,
-            datetime.now(timezone.utc)
-        ))
+            for r in result['per_regime']:
+                cr = r['candidate_return']
+                regime_return_rows.append((
+                    cid, pyeong_group_id, r['regime_id'],
+                    float(cr) if cr is not None else None, None, bool(r['judgable'])
+                ))
 
+            cand_price = int(cand_monthly.iloc[-1]['rep_price_10k'])
+            gap = cand_price - leader_price
+
+            sync_summary_rows.append((
+                region_code, pyeong_group_id, leader_id, cid,
+                int(result['sync_count']), int(result['judgable_count']),
+                float(result['sync_index']), gap, updated_at
+            ))
+
+    db.insert_many(
+        conn, 'leader_complexes',
+        ['region_code', 'pyeong_group_id', 'complex_id', 'stable_regimes', 'as_of'],
+        leader_rows,
+    )
     db.insert_many(
         conn, 'regime_returns',
         ['complex_id', 'pyeong_group_id', 'regime_id', 'return_rate', 'txn_count_regime', 'is_judgable'],
@@ -337,7 +352,7 @@ def recompute(conn):
         sync_summary_rows,
     )
     conn.commit()
-    log.info("RECOMPUTE 완료")
+    log.info(f"RECOMPUTE 완료 — {len(leader_rows)}개 지역 대장단지 판정")
 
 
 # ------------------------------------------------------------
