@@ -1,7 +1,7 @@
 {
   "leader": {
     "name": "래미안대치팰리스",
-    "meta": "- · 2015년 준공 · 전용 84㎡ 기준",
+    "meta": "1,608세대 · 2015년 준공 · 전용 84㎡ 기준",
     "currentPrice": 44.0,
     "pts": [
       [
@@ -226,7 +226,7 @@
     {
       "id": "complex-10",
       "name": "경남아너스빌",
-      "meta": "- · 2002년 준공",
+      "meta": "164세대 · 2002년 준공",
       "gap": "−25.9억",
       "syncFlags": [
         true,
@@ -384,7 +384,7 @@
       "syncIndex": 1.0,
       "passesFilter": true,
       "info": {
-        "households": "-",
+        "households": "164세대",
         "year": "2002년",
         "size": "전용 84㎡",
         "recent": "26.06 · 18.1억"
@@ -393,7 +393,7 @@
     {
       "id": "complex-24",
       "name": "롯데캐슬프레미어",
-      "meta": "- · 2007년 준공",
+      "meta": "713세대 · 2007년 준공",
       "gap": "−11.2억",
       "syncFlags": [
         true,
@@ -519,7 +519,7 @@
       "syncIndex": 1.0,
       "passesFilter": true,
       "info": {
-        "households": "-",
+        "households": "713세대",
         "year": "2007년",
         "size": "전용 84㎡",
         "recent": "26.07 · 32.8억"
@@ -528,7 +528,7 @@
     {
       "id": "complex-26",
       "name": "삼성동힐스테이트 1단지",
-      "meta": "- · 2008년 준공",
+      "meta": "1,144세대 · 2008년 준공",
       "gap": "−8.1억",
       "syncFlags": [
         true,
@@ -806,7 +806,7 @@
       "syncIndex": 1.0,
       "passesFilter": true,
       "info": {
-        "households": "-",
+        "households": "1,144세대",
         "year": "2008년",
         "size": "전용 84㎡",
         "recent": "26.07 · 35.9억"

@@ -22,8 +22,8 @@ from dotenv import load_dotenv
 
 import db
 from apt_trade_connector import AptTradeConnector, clean_transactions, build_monthly_price
+from kapt_connector import HouseholdsResolver
 from sync_engine import AlgoParams, Regime, evaluate_candidate, compute_regime_return, pick_leader
-import synthetic_source
 
 load_dotenv()
 
@@ -142,26 +142,46 @@ def transform_and_load(conn, raw: pd.DataFrame) -> int:
     log.info(f"평형 필터 적용 ({area_min}~{area_max}㎡) — {len(cleaned)}행 남음")
 
     # 단지 마스터 upsert (apt_seq 기준)
-    # 세대수는 국토부 실거래가 API에 없는 필드 — 공동주택관리정보시스템(k-apt) 등
-    # 별도 데이터셋과 조인해서 채워야 함. 데모에서는 synthetic_source의 마스터로 대체.
-    master = synthetic_source.complex_master().set_index('apt_seq')
+    # 세대수는 국토부 실거래가 API에 없는 필드 — 공동주택 단지목록/기본정보 API(kapt_connector)에서
+    # 단지명+준공년도(실거래가 API에서 온 진짜 값)로 매칭해서 채움. 이미 매칭된 건 재조회 안 함
+    # (API 왕복비용 있고 세대수는 거의 안 바뀌는 값이라 danji_code가 있으면 재사용).
+    already_matched = {
+        row[0]: row[1] for row in conn.execute(
+            "SELECT apt_seq, households FROM complexes WHERE households IS NOT NULL"
+        )
+    }
+    resolver = HouseholdsResolver(os.environ["APT_API_KEY"])
+    resolved_count = 0
+
     for apt_seq, group in cleaned.groupby('apt_seq'):
         name = group['complex_name'].iloc[0]
         by = group['built_year'].dropna()
         built_year = int(by.iloc[0]) if not by.empty else None
-        households = int(master.loc[apt_seq, 'households']) if apt_seq in master.index else None
         dong_name = group['dong_name'].iloc[0]
         region_code = GANGNAM_DONG_CODES.get(dong_name)
         if region_code is None:
             log.warning(f"미등록 동명 '{dong_name}' (apt_seq={apt_seq}) — 강남구로 대체")
             region_code = GANGNAM_REGION_CODE
+
+        if apt_seq in already_matched:
+            households, danji_code, match_confidence = already_matched[apt_seq], None, None
+        else:
+            households, danji_code, match_confidence = resolver.resolve(region_code, name, built_year)
+            if households is not None:
+                resolved_count += 1
+
         conn.execute(
-            """INSERT INTO complexes (complex_name, region_code, apt_seq, built_year, households)
-               VALUES (%s, %s, %s, %s, %s)
-               ON CONFLICT (apt_seq) DO UPDATE SET complex_name=EXCLUDED.complex_name, region_code=EXCLUDED.region_code""",
-            (name, region_code, apt_seq, built_year, households)
+            """INSERT INTO complexes (complex_name, region_code, apt_seq, built_year, households, danji_code, match_confidence)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)
+               ON CONFLICT (apt_seq) DO UPDATE SET
+                 complex_name=EXCLUDED.complex_name, region_code=EXCLUDED.region_code,
+                 households=COALESCE(complexes.households, EXCLUDED.households),
+                 danji_code=COALESCE(complexes.danji_code, EXCLUDED.danji_code),
+                 match_confidence=COALESCE(complexes.match_confidence, EXCLUDED.match_confidence)""",
+            (name, region_code, apt_seq, built_year, households, danji_code, match_confidence)
         )
     conn.commit()
+    log.info(f"세대수 매칭 — 이번에 새로 매칭 {resolved_count}건, 기존 캐시 {len(already_matched)}건")
 
     complex_id_map = {
         row[1]: row[0] for row in conn.execute("SELECT complex_id, apt_seq FROM complexes")
