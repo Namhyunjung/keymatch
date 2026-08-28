@@ -1,0 +1,61 @@
+name: keymatch batch
+
+on:
+  schedule:
+    - cron: '0 18 * * *'   # 매일 03:00 KST — 증분 수집 (최근 3개월)
+    - cron: '0 19 * * 6'   # 매주 일요일 04:00 KST — 전체 재계산
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '수동 실행 모드'
+        required: false
+        default: incremental
+        type: choice
+        options: [incremental, full]
+
+permissions:
+  contents: write
+
+jobs:
+  run-batch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install -r requirements.txt
+
+      - name: 모드 결정
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ inputs.mode }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 19 * * 6" ]; then
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=incremental" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 파이프라인 실행
+        env:
+          APT_API_KEY: ${{ secrets.APT_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python batch_runner.py --mode ${{ steps.mode.outputs.mode }}
+
+      - name: 프론트 데이터 export
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python export_for_frontend.py
+          python bake_frontend.py
+
+      - name: 변경사항 커밋
+        run: |
+          git config user.name "keymatch-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add frontend_data.json keymatch.html
+          git diff --cached --quiet || git commit -m "auto: refresh pipeline data ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+          git push
