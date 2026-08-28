@@ -1,16 +1,18 @@
 """
 export_for_frontend.py
-batch_runner.py가 채운 keymatch.db를 읽어서, keymatch.html의 하드코딩된
+batch_runner.py가 채운 Supabase(Postgres)를 읽어서, keymatch.html의 하드코딩된
 mock 배열(leaderPts, units)과 동일한 shape의 JSON을 만든다.
 """
 from __future__ import annotations
 
 import json
-import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / 'keymatch.db'
-REGIME_BOUNDS_YM = ['201705', '201912', '202204', '202312', '202608']
+from dotenv import load_dotenv
+
+import db
+
+load_dotenv()
 
 
 def month_index(ym: str) -> float:
@@ -29,36 +31,50 @@ def series_to_pts(rows: list[tuple], base_price: float) -> list[list[float]]:
 
 
 def export() -> dict:
-    conn = sqlite3.connect(DB_PATH)
+    conn = db.get_conn()
 
     leader_id = conn.execute(
         "SELECT complex_id FROM leader_complexes ORDER BY as_of DESC LIMIT 1"
     ).fetchone()[0]
-    leader_name, leader_built, leader_house = conn.execute(
-        "SELECT complex_name, built_year, households FROM complexes WHERE complex_id=?", (leader_id,)
-    ).fetchone()
 
-    leader_rows = conn.execute(
-        "SELECT ym, rep_price_10k FROM monthly_price WHERE complex_id=? ORDER BY ym", (leader_id,)
+    # 단지마다 왕복 쿼리하면 원격 DB에서 느림 — 필요한 테이블 전체를 한 번씩만 긁어서
+    # 메모리(dict)에서 조합함.
+    complex_info = {
+        cid: (name, built_year, households)
+        for cid, name, built_year, households in conn.execute(
+            "SELECT complex_id, complex_name, built_year, households FROM complexes"
+        )
+    }
+
+    monthly_by_complex: dict[int, list[tuple]] = {}
+    for cid, ym, price in conn.execute(
+        "SELECT complex_id, ym, rep_price_10k FROM monthly_price ORDER BY complex_id, ym"
+    ):
+        monthly_by_complex.setdefault(cid, []).append((ym, price))
+
+    regime_returns = {}  # (complex_id, regime_id) -> (is_judgable, return_rate)
+    for cid, regime_id, is_judgable, return_rate in conn.execute(
+        "SELECT complex_id, regime_id, is_judgable, return_rate FROM regime_returns"
+    ):
+        regime_returns[(cid, regime_id)] = (is_judgable, return_rate)
+
+    summaries = conn.execute(
+        """SELECT candidate_complex_id, sync_count, judgable_count, sync_index, current_price_gap_10k
+           FROM sync_summary WHERE leader_complex_id=%s ORDER BY sync_index DESC, current_price_gap_10k ASC""",
+        (leader_id,)
     ).fetchall()
+    conn.close()
+
+    leader_name, leader_built, leader_house = complex_info[leader_id]
+    leader_rows = monthly_by_complex[leader_id]
     leader_base = leader_rows[0][1]
     leader_pts = series_to_pts(leader_rows, leader_base)
     leader_current = leader_rows[-1][1] / 10000  # 억 단위
 
     units = []
-    summaries = conn.execute(
-        """SELECT candidate_complex_id, sync_count, judgable_count, sync_index, current_price_gap_10k
-           FROM sync_summary WHERE leader_complex_id=? ORDER BY sync_index DESC, current_price_gap_10k ASC""",
-        (leader_id,)
-    ).fetchall()
-
     for cid, sync_count, judgable_count, sync_index, gap in summaries:
-        name, built_year, households = conn.execute(
-            "SELECT complex_name, built_year, households FROM complexes WHERE complex_id=?", (cid,)
-        ).fetchone()
-        rows = conn.execute(
-            "SELECT ym, rep_price_10k FROM monthly_price WHERE complex_id=? ORDER BY ym", (cid,)
-        ).fetchall()
+        name, built_year, households = complex_info[cid]
+        rows = monthly_by_complex.get(cid, [])
         if not rows:
             continue
         base = rows[0][1]
@@ -67,30 +83,24 @@ def export() -> dict:
 
         regime_flags = []
         for regime_id in range(1, 5):
-            row = conn.execute(
-                "SELECT is_judgable, return_rate FROM regime_returns WHERE complex_id=? AND regime_id=?",
-                (cid, regime_id)
-            ).fetchone()
-            if row is None or not row[0]:
+            entry = regime_returns.get((cid, regime_id))
+            if entry is None or not entry[0]:
                 regime_flags.append(None)  # 판정불가
                 continue
-            leader_row = conn.execute(
-                "SELECT return_rate FROM regime_returns WHERE complex_id=? AND regime_id=?",
-                (leader_id, regime_id)
-            ).fetchone()
-            same_dir = (leader_row[0] > 0) == (row[1] > 0)
-            synced = same_dir and abs(row[1] - leader_row[0]) <= 0.12
+            leader_entry = regime_returns.get((leader_id, regime_id))
+            same_dir = (leader_entry[1] > 0) == (entry[1] > 0)
+            synced = same_dir and abs(entry[1] - leader_entry[1]) <= 0.12
             regime_flags.append(bool(synced))
 
         units.append({
             'id': f'complex-{cid}',
             'name': name,
             'meta': f"{households:,}세대 · {built_year or '-'}년 준공" if households else f"- · {built_year or '-'}년 준공",
-            'gap': f"{gap/10000:.1f}억".replace('-', '\u2212'),
+            'gap': f"{gap/10000:.1f}억".replace('-', '−'),
             'syncFlags': regime_flags,
             'pts': pts,
             'currentPrice': round(current_price, 1),
-            'syncIndex': sync_index,
+            'syncIndex': float(sync_index),
             'passesFilter': judgable_count >= 3 and sync_index >= 0.75,
             'info': {
                 'households': f"{households:,}세대" if households else '-',
@@ -100,7 +110,6 @@ def export() -> dict:
             }
         })
 
-    conn.close()
     passing_units = [u for u in units if u['passesFilter']]
     return {
         'leader': {

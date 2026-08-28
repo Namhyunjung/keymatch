@@ -2,3 +2,4 @@
 keymatch.db
 __pycache__/
 *.pyc
+.claude/

@@ -130,7 +130,17 @@ CREATE TABLE sync_summary (
 );
 CREATE INDEX idx_sync_summary_region ON sync_summary(region_code, pyeong_group_id, sync_index DESC);
 
--- 11. 알고리즘 파라미터 (사용자가 설정화면에서 조정 → 버전 관리)
+-- 11. 배치 실행 이력 (batch_runner.py가 매 실행마다 기록)
+CREATE TABLE pipeline_runs (
+  run_id        BIGSERIAL   PRIMARY KEY,
+  started_at    TIMESTAMP   NOT NULL,
+  finished_at   TIMESTAMP,
+  status        VARCHAR(10),  -- 'running' | 'success' | 'failed'
+  rows_ingested INT,
+  error_msg     TEXT
+);
+
+-- 12. 알고리즘 파라미터 (사용자가 설정화면에서 조정 → 버전 관리)
 CREATE TABLE algo_params (
   param_set_id   SERIAL PRIMARY KEY,
   n_months       SMALLINT DEFAULT 6,        -- 최고가 산출 윈도우

@@ -5,6 +5,7 @@ cron이든 Airflow든, 이 스크립트 하나를 실행하면 전체 파이프�
     python batch_runner.py --mode incremental # 최근 3개월만 (매일 새벽 배치)
 
 EXTRACT는 AptTradeConnector로 실 API 호출. .env의 APT_API_KEY 필요.
+DB는 Supabase(Postgres). .env의 DATABASE_URL 필요 (db.py 참고).
 """
 
 from __future__ import annotations
@@ -12,7 +13,6 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import sqlite3
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,6 +20,7 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 
+import db
 from apt_trade_connector import AptTradeConnector, clean_transactions, build_monthly_price
 from sync_engine import AlgoParams, Regime, evaluate_candidate, compute_regime_return, pick_leader
 import synthetic_source
@@ -45,8 +46,7 @@ logging.basicConfig(
 )
 log = logging.getLogger('batch_runner')
 
-DB_PATH = Path(__file__).parent / 'keymatch.db'
-SCHEMA_PATH = Path(__file__).parent / 'sqlite_schema.sql'
+SCHEMA_PATH = Path(__file__).parent / 'schema.sql'
 
 REGIMES = [
     Regime(1, '규제강화기', '201705', '201912'),
@@ -59,26 +59,31 @@ REGIMES = [
 # ------------------------------------------------------------
 # DB 초기화
 # ------------------------------------------------------------
-def init_db(conn: sqlite3.Connection):
-    if not DB_PATH.exists() or _tables_missing(conn):
+def init_db(conn):
+    exists = conn.execute("SELECT to_regclass('public.regions')").fetchone()[0]
+    if exists is None:
         log.info("스키마 초기화")
-        conn.executescript(SCHEMA_PATH.read_text(encoding='utf-8'))
+        conn.execute(SCHEMA_PATH.read_text(encoding='utf-8'))
+        conn.commit()
+    if conn.execute("SELECT COUNT(*) FROM regions").fetchone()[0] == 0:
+        log.info("정적 시드 데이터 없음 — 시딩")
         _seed_static(conn)
 
 
-def _tables_missing(conn) -> bool:
-    cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    return len(cur.fetchall()) == 0
-
-
 def _seed_static(conn):
-    conn.execute("INSERT INTO regions VALUES (?,?,?,?)", (GANGNAM_REGION_CODE, '서울', '강남구', None))
+    conn.execute(
+        "INSERT INTO regions (region_code, sido, sigungu, eupmyeondong) VALUES (%s,%s,%s,%s)",
+        (GANGNAM_REGION_CODE, '서울', '강남구', None)
+    )
     for dong_name, code in GANGNAM_DONG_CODES.items():
-        conn.execute("INSERT INTO regions VALUES (?,?,?,?)", (code, '서울', '강남구', dong_name))
+        conn.execute(
+            "INSERT INTO regions (region_code, sido, sigungu, eupmyeondong) VALUES (%s,%s,%s,%s)",
+            (code, '서울', '강남구', dong_name)
+        )
     conn.execute("INSERT INTO pyeong_groups (label, area_min, area_max) VALUES ('84㎡', 81, 88)")
     for r in REGIMES:
         conn.execute(
-            "INSERT INTO regimes (label, start_ym, end_ym, display_order) VALUES (?,?,?,?)",
+            "INSERT INTO regimes (label, start_ym, end_ym, display_order) VALUES (%s,%s,%s,%s)",
             (r.label, r.start_ym, r.end_ym, r.regime_id)
         )
     conn.commit()
@@ -123,7 +128,7 @@ def extract(mode: str) -> pd.DataFrame:
 # ------------------------------------------------------------
 # TRANSFORM + LOAD
 # ------------------------------------------------------------
-def transform_and_load(conn: sqlite3.Connection, raw: pd.DataFrame) -> int:
+def transform_and_load(conn, raw: pd.DataFrame) -> int:
     log.info("TRANSFORM 시작")
     cleaned = clean_transactions(raw)
 
@@ -132,6 +137,7 @@ def transform_and_load(conn: sqlite3.Connection, raw: pd.DataFrame) -> int:
     pg_id, area_min, area_max = conn.execute(
         "SELECT pyeong_group_id, area_min, area_max FROM pyeong_groups LIMIT 1"
     ).fetchone()
+    area_min, area_max = float(area_min), float(area_max)
     cleaned = cleaned[cleaned['area_m2'].between(area_min, area_max)].copy()
     log.info(f"평형 필터 적용 ({area_min}~{area_max}㎡) — {len(cleaned)}행 남음")
 
@@ -151,8 +157,8 @@ def transform_and_load(conn: sqlite3.Connection, raw: pd.DataFrame) -> int:
             region_code = GANGNAM_REGION_CODE
         conn.execute(
             """INSERT INTO complexes (complex_name, region_code, apt_seq, built_year, households)
-               VALUES (?, ?, ?, ?, ?)
-               ON CONFLICT(apt_seq) DO UPDATE SET complex_name=excluded.complex_name, region_code=excluded.region_code""",
+               VALUES (%s, %s, %s, %s, %s)
+               ON CONFLICT (apt_seq) DO UPDATE SET complex_name=EXCLUDED.complex_name, region_code=EXCLUDED.region_code""",
             (name, region_code, apt_seq, built_year, households)
         )
     conn.commit()
@@ -161,37 +167,38 @@ def transform_and_load(conn: sqlite3.Connection, raw: pd.DataFrame) -> int:
         row[1]: row[0] for row in conn.execute("SELECT complex_id, apt_seq FROM complexes")
     }
 
-    # 원본 거래 적재 (raw_source_id로 중복방지)
-    rows_ingested = 0
+    # 원본 거래 적재 (raw_source_id로 중복방지) — 원격 DB라 묶어서 insert
+    txn_rows = []
     for _, row in cleaned.iterrows():
         raw_source_id = f"{row['apt_seq']}_{row['txn_ym']}_{row['txn_day']}_{row['price_10k']}_{row['floor']}"
-        try:
-            conn.execute(
-                """INSERT OR IGNORE INTO transactions
-                   (complex_id, pyeong_group_id, area_m2, floor, txn_ym, txn_day,
-                    price_10k, is_direct_txn, is_cancelled, raw_source_id)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
-                (complex_id_map[row['apt_seq']], pg_id, row['area_m2'], row['floor'],
-                 row['txn_ym'], row['txn_day'], row['price_10k'],
-                 int(row['is_direct_txn']), int(row['is_cancelled']), raw_source_id)
-            )
-            rows_ingested += 1
-        except Exception as e:
-            log.warning(f"적재 실패, 건너뜀: {raw_source_id} — {e}")
+        txn_rows.append((
+            complex_id_map[row['apt_seq']], pg_id, row['area_m2'], row['floor'],
+            row['txn_ym'], row['txn_day'], row['price_10k'],
+            bool(row['is_direct_txn']), bool(row['is_cancelled']), raw_source_id
+        ))
+    db.insert_many(
+        conn, 'transactions',
+        ['complex_id', 'pyeong_group_id', 'area_m2', 'floor', 'txn_ym', 'txn_day',
+         'price_10k', 'is_direct_txn', 'is_cancelled', 'raw_source_id'],
+        txn_rows,
+        on_conflict='ON CONFLICT (raw_source_id) DO NOTHING',
+    )
     conn.commit()
+    rows_ingested = len(txn_rows)
 
     # 월별 대표가 재계산 — 이번에 수집된 (단지×월) 건만 갱신.
-    # 과거 이력을 지우지 않도록 전체 DELETE 대신 PK(complex_id, ym) 단위로 REPLACE
     monthly = build_monthly_price(cleaned)
-    for apt_seq, group in monthly.groupby('apt_seq'):
-        cid = complex_id_map[apt_seq]
-        for _, r in group.iterrows():
-            conn.execute(
-                """INSERT OR REPLACE INTO monthly_price
-                   (complex_id, pyeong_group_id, ym, rep_price_10k, txn_count)
-                   VALUES (?,?,?,?,?)""",
-                (cid, pg_id, r['ym'], int(r['rep_price_10k']), int(r['txn_count']))
-            )
+    monthly_rows = [
+        (complex_id_map[r['apt_seq']], pg_id, r['ym'], int(r['rep_price_10k']), int(r['txn_count']))
+        for _, r in monthly.iterrows()
+    ]
+    db.insert_many(
+        conn, 'monthly_price',
+        ['complex_id', 'pyeong_group_id', 'ym', 'rep_price_10k', 'txn_count'],
+        monthly_rows,
+        on_conflict='''ON CONFLICT (complex_id, pyeong_group_id, ym)
+                        DO UPDATE SET rep_price_10k=EXCLUDED.rep_price_10k, txn_count=EXCLUDED.txn_count''',
+    )
     conn.commit()
     log.info(f"LOAD 완료 — 거래 {rows_ingested}건, 월별대표가 {len(monthly)}행")
     return rows_ingested
@@ -200,19 +207,30 @@ def transform_and_load(conn: sqlite3.Connection, raw: pd.DataFrame) -> int:
 # ------------------------------------------------------------
 # RECOMPUTE: 대장단지 판정 + 국면별 상승률 + 동조지수
 # ------------------------------------------------------------
-def recompute(conn: sqlite3.Connection):
+def recompute(conn):
     log.info("RECOMPUTE 시작")
     params = AlgoParams()
     pyeong_group_id = conn.execute("SELECT pyeong_group_id FROM pyeong_groups LIMIT 1").fetchone()[0]
 
     complexes = conn.execute("SELECT complex_id, apt_seq, complex_name FROM complexes").fetchall()
 
+    # 단지마다 매번 SELECT 왕복하면 원격 DB에서 느림 — 이 평형의 월별가격 전체를 한 번에 긁어서
+    # 메모리에서 단지별로 나눔 (pick_leader용 price_df도 같은 조회 재사용)
+    all_monthly = pd.DataFrame(
+        conn.execute(
+            "SELECT complex_id, ym, rep_price_10k, txn_count FROM monthly_price WHERE pyeong_group_id=%s ORDER BY ym",
+            (pyeong_group_id,)
+        ).fetchall(),
+        columns=['complex_id', 'ym', 'rep_price_10k', 'txn_count']
+    )
+    monthly_by_complex = {
+        cid: g[['ym', 'rep_price_10k', 'txn_count']].reset_index(drop=True)
+        for cid, g in all_monthly.groupby('complex_id')
+    }
+    empty_monthly = pd.DataFrame(columns=['ym', 'rep_price_10k', 'txn_count'])
+
     def load_monthly(complex_id: int) -> pd.DataFrame:
-        rows = conn.execute(
-            "SELECT ym, rep_price_10k, txn_count FROM monthly_price WHERE complex_id=? ORDER BY ym",
-            (complex_id,)
-        ).fetchall()
-        return pd.DataFrame(rows, columns=['ym', 'rep_price_10k', 'txn_count'])
+        return monthly_by_complex.get(complex_id, empty_monthly)
 
     latest_prices = []
     for cid, apt_seq, name in complexes:
@@ -222,43 +240,42 @@ def recompute(conn: sqlite3.Connection):
         latest_prices.append((cid, apt_seq, name, m.iloc[-1]['rep_price_10k']))
 
     # 대장단지 판정: 국면 종료시점마다 상위 10% 안에 몇 번 들었는지(순위안정성) — sync_engine.pick_leader()
-    price_rows = conn.execute(
-        "SELECT complex_id, ym, rep_price_10k FROM monthly_price WHERE pyeong_group_id=?",
-        (pyeong_group_id,)
-    ).fetchall()
-    price_df = pd.DataFrame(price_rows, columns=['complex_id', 'ym', 'price_per_pyeong'])
+    price_df = all_monthly[['complex_id', 'ym', 'rep_price_10k']].rename(columns={'rep_price_10k': 'price_per_pyeong'})
     ranking = pick_leader(price_df, REGIMES, params)
     if ranking.empty:
         raise RuntimeError("대장단지 판정 불가 — 국면 종료시점에 거래 데이터 없음")
     leader_id = int(ranking.iloc[0]['complex_id'])
+    stable_regimes = int(ranking.iloc[0]['stable_regimes'])
     leader_apt_seq, leader_name = next((a, n) for cid, a, n in complexes if cid == leader_id)
     log.info(
-        f"대장단지 순위안정성: stable_regimes={int(ranking.iloc[0]['stable_regimes'])}/{len(REGIMES)} "
+        f"대장단지 순위안정성: stable_regimes={stable_regimes}/{len(REGIMES)} "
         f"(상위 {int(params.leader_top_pct*100)}% 기준)"
     )
     log.info(f"대장단지 판정: {leader_name} ({leader_apt_seq})")
 
     conn.execute("DELETE FROM leader_complexes")
     conn.execute(
-        "INSERT INTO leader_complexes VALUES ('1168000000', ?, ?, ?)",
-        (pyeong_group_id, leader_id, datetime.now(timezone.utc).isoformat())
+        """INSERT INTO leader_complexes (region_code, pyeong_group_id, complex_id, stable_regimes, as_of)
+           VALUES (%s, %s, %s, %s, %s)""",
+        (GANGNAM_REGION_CODE, pyeong_group_id, leader_id, stable_regimes, datetime.now(timezone.utc).date())
     )
 
     leader_monthly = load_monthly(leader_id)
     conn.execute("DELETE FROM regime_returns")
     conn.execute("DELETE FROM sync_summary")
 
+    # 원격 DB라 후보 단지 수만큼 row-by-row insert하면 왕복비용이 큼 — 모아서 한번에 넣음
+    regime_return_rows = []
+    sync_summary_rows = []
+
     for regime in REGIMES:
         stat = compute_regime_return(leader_monthly, regime, params)
         rr = stat['return_rate']
-        conn.execute(
-            """INSERT OR REPLACE INTO regime_returns
-               (complex_id, pyeong_group_id, regime_id, return_rate, txn_count_regime, is_judgable)
-               VALUES (?,?,?,?,?,?)""",
-            (leader_id, pyeong_group_id, regime.regime_id,
-             float(rr) if rr is not None else None,
-             int(stat['txn_count_regime']), int(stat['is_judgable']))
-        )
+        regime_return_rows.append((
+            leader_id, pyeong_group_id, regime.regime_id,
+            float(rr) if rr is not None else None,
+            int(stat['txn_count_regime']), bool(stat['is_judgable'])
+        ))
 
     for cid, apt_seq, name, _ in latest_prices:
         if cid == leader_id:
@@ -268,27 +285,32 @@ def recompute(conn: sqlite3.Connection):
 
         for r in result['per_regime']:
             cr = r['candidate_return']
-            conn.execute(
-                """INSERT OR REPLACE INTO regime_returns
-                   (complex_id, pyeong_group_id, regime_id, return_rate, txn_count_regime, is_judgable)
-                   VALUES (?,?,?,?,?,?)""",
-                (cid, pyeong_group_id, r['regime_id'],
-                 float(cr) if cr is not None else None, None, int(r['judgable']))
-            )
+            regime_return_rows.append((
+                cid, pyeong_group_id, r['regime_id'],
+                float(cr) if cr is not None else None, None, bool(r['judgable'])
+            ))
 
         leader_price = int(leader_monthly.iloc[-1]['rep_price_10k'])
         cand_price = int(cand_monthly.iloc[-1]['rep_price_10k']) if not cand_monthly.empty else None
         gap = (cand_price - leader_price) if cand_price is not None else None
 
-        conn.execute(
-            """INSERT OR REPLACE INTO sync_summary
-               (region_code, pyeong_group_id, leader_complex_id, candidate_complex_id,
-                sync_count, judgable_count, sync_index, current_price_gap_10k, updated_at)
-               VALUES ('1168000000', ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (pyeong_group_id, leader_id, cid, int(result['sync_count']), int(result['judgable_count']),
-             float(result['sync_index']), int(gap) if gap is not None else None,
-             datetime.now(timezone.utc).isoformat())
-        )
+        sync_summary_rows.append((
+            GANGNAM_REGION_CODE, pyeong_group_id, leader_id, cid, int(result['sync_count']), int(result['judgable_count']),
+            float(result['sync_index']), int(gap) if gap is not None else None,
+            datetime.now(timezone.utc)
+        ))
+
+    db.insert_many(
+        conn, 'regime_returns',
+        ['complex_id', 'pyeong_group_id', 'regime_id', 'return_rate', 'txn_count_regime', 'is_judgable'],
+        regime_return_rows,
+    )
+    db.insert_many(
+        conn, 'sync_summary',
+        ['region_code', 'pyeong_group_id', 'leader_complex_id', 'candidate_complex_id',
+         'sync_count', 'judgable_count', 'sync_index', 'current_price_gap_10k', 'updated_at'],
+        sync_summary_rows,
+    )
     conn.commit()
     log.info("RECOMPUTE 완료")
 
@@ -298,17 +320,15 @@ def recompute(conn: sqlite3.Connection):
 # ------------------------------------------------------------
 def run(mode: str) -> dict:
     started = datetime.now(timezone.utc)
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = OFF")  # SQLite 데모 편의상 완화 (운영 Postgres는 FK 유지)
+    conn = db.get_conn()
 
     run_id = None
     try:
         init_db(conn)
-        conn.execute(
-            "INSERT INTO pipeline_runs (started_at, status) VALUES (?, 'running')",
-            (started.isoformat(),)
-        )
-        run_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        run_id = conn.execute(
+            "INSERT INTO pipeline_runs (started_at, status) VALUES (%s, 'running') RETURNING run_id",
+            (started,)
+        ).fetchone()[0]
         conn.commit()
 
         raw = extract(mode)
@@ -316,8 +336,8 @@ def run(mode: str) -> dict:
         recompute(conn)
 
         conn.execute(
-            "UPDATE pipeline_runs SET finished_at=?, status='success', rows_ingested=? WHERE run_id=?",
-            (datetime.now(timezone.utc).isoformat(), rows_ingested, run_id)
+            "UPDATE pipeline_runs SET finished_at=%s, status='success', rows_ingested=%s WHERE run_id=%s",
+            (datetime.now(timezone.utc), rows_ingested, run_id)
         )
         conn.commit()
         log.info("파이프라인 성공")
@@ -327,8 +347,8 @@ def run(mode: str) -> dict:
         log.exception("파이프라인 실패")
         if run_id is not None:
             conn.execute(
-                "UPDATE pipeline_runs SET finished_at=?, status='failed', error_msg=? WHERE run_id=?",
-                (datetime.now(timezone.utc).isoformat(), str(e), run_id)
+                "UPDATE pipeline_runs SET finished_at=%s, status='failed', error_msg=%s WHERE run_id=%s",
+                (datetime.now(timezone.utc), str(e), run_id)
             )
             conn.commit()
         return {'status': 'failed', 'error': str(e)}
