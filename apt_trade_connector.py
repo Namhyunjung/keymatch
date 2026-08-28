@@ -168,35 +168,83 @@ def clean_transactions(raw: pd.DataFrame) -> pd.DataFrame:
 
 
 # ------------------------------------------------------------------
-# 5. 이상치 트리밍 + 월별 대표가 산출 (sync_engine.py 입력 포맷으로)
+# 5. 이상치/특수관계 저가거래 방어 + 월별 대표가 산출
 # ------------------------------------------------------------------
 def build_monthly_price(
     clean_df: pd.DataFrame,
     trim_pct: float = 0.05,
-    rep_method: str = 'max',  # 'max' | 'median'
+    rep_method: str = 'max',             # 'max' | 'median'
+    direct_deal_low_pct: float = 0.15,   # 직거래 + 기준가 대비 -15% 이상 낮으면 배제
+    extreme_low_pct: float = 0.25,       # 거래유형 무관, 기준가 대비 -25% 이상 낮으면 배제
+    ref_window_months: int = 5,          # 기준가(ref) 산출용 롤링 윈도우(개월)
 ) -> pd.DataFrame:
     """
     clean_transactions() 결과를 받아서 apt_seq × txn_ym 별 월별 대표가를 산출.
-    반환 컬럼: apt_seq, ym, rep_price_10k, txn_count
+
+    거래건수(n>=5) 트리밍만으로는 '그 달에 거래가 1~2건뿐인데 그중 하나가
+    증여성 저가 직거래'인 경우를 못 거른다 (트리밍 조건 자체가 안 걸림).
+    그래서 아래처럼 2단계로 처리한다:
+
+    1단계 — 단지별 롤링 기준가(ref) 산출
+        월별 raw median(㎡당가)을 구하고, 인접 개월로 스무딩해서 '이 시점 대략
+        이 정도가 시세다'라는 기준선을 만듦. 이 기준선 자체엔 아직 필터를 안 걸어서
+        저가거래 1건이 그 달 유일한 거래여도 기준선은 앞뒤 달의 정상거래로 보정됨.
+
+    2단계 — 기준가 대비 이탈 거래 배제
+        - 직거래 + 기준가 대비 direct_deal_low_pct 이상 낮음 → 배제
+        - 거래유형 무관 + 기준가 대비 extreme_low_pct 이상 낮음 → 배제 (통계적 극단치)
+        남은 거래만으로 기존 상하위 5% 트리밍(n>=5일 때만) + 대표가(최고가) 산출.
+        한 달에 유효 거래가 0건이 되면 그 달은 결측으로 남김
+        (compute_regime_return의 n개월 윈도우 탐색이 인접 개월에서 값을 찾음).
+
+    반환 컬럼: apt_seq, ym, rep_price_10k, txn_count, excluded_outlier_count
     → sync_engine.py의 monthly 인자에 apt_seq별로 groupby해서 그대로 넣을 수 있음
     """
     active = clean_df[~clean_df['is_cancelled']].copy()
+    active['price_per_m2'] = active['price_10k'] / active['area_m2']
 
-    def trim_and_summarize(group: pd.DataFrame) -> pd.Series:
-        prices = group['price_10k'].sort_values()
+    # ---- 1단계: 단지별 롤링 기준가 ----
+    monthly_raw_median = (
+        active.groupby(['apt_seq', 'txn_ym'])['price_per_m2']
+        .median()
+        .reset_index()
+        .sort_values(['apt_seq', 'txn_ym'])
+    )
+    monthly_raw_median['ref_price_per_m2'] = (
+        monthly_raw_median.groupby('apt_seq')['price_per_m2']
+        .transform(lambda s: s.rolling(ref_window_months, center=True, min_periods=1).median())
+    )
+    ref_map = monthly_raw_median.set_index(['apt_seq', 'txn_ym'])['ref_price_per_m2']
+
+    active['ref_price_per_m2'] = active.set_index(['apt_seq', 'txn_ym']).index.map(ref_map)
+    active['deviation'] = (active['price_per_m2'] - active['ref_price_per_m2']) / active['ref_price_per_m2']
+
+    # ---- 2단계: 이탈 거래 배제 ----
+    is_direct_low = active['is_direct_txn'] & (active['deviation'] <= -direct_deal_low_pct)
+    is_extreme_low = active['deviation'] <= -extreme_low_pct
+    active['is_suspected_outlier'] = is_direct_low | is_extreme_low
+
+    def summarize(group: pd.DataFrame) -> pd.Series:
+        valid = group[~group['is_suspected_outlier']]
+        excluded = len(group) - len(valid)
+        if valid.empty:
+            return pd.Series({'rep_price_10k': None, 'txn_count': len(group), 'excluded_outlier_count': excluded})
+        prices = valid['price_10k'].sort_values()
         n = len(prices)
         if n >= 5:
             cut = max(1, int(n * trim_pct))
             prices = prices.iloc[cut:n - cut]
         rep = prices.max() if rep_method == 'max' else prices.median()
-        return pd.Series({'rep_price_10k': rep, 'txn_count': n})
+        return pd.Series({'rep_price_10k': rep, 'txn_count': len(group), 'excluded_outlier_count': excluded})
 
     result = (
         active.groupby(['apt_seq', 'txn_ym'])
-        .apply(trim_and_summarize)
+        .apply(summarize)
         .reset_index()
         .rename(columns={'txn_ym': 'ym'})
     )
+    result = result.dropna(subset=['rep_price_10k'])
+    result['rep_price_10k'] = result['rep_price_10k'].astype(int)
     return result.sort_values(['apt_seq', 'ym']).reset_index(drop=True)
 
 
@@ -204,6 +252,10 @@ def build_monthly_price(
 # 예시 실행
 # ------------------------------------------------------------------
 if __name__ == '__main__':
+    import sys
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')  # Windows cp949 콘솔 대응
+
     # 실제 서비스키 없이 구조만 확인하고 싶다면 raw 샘플로 clean/build 단계를 테스트
     sample_raw = pd.DataFrame([
         {'apt_seq': '11680-101', 'complex_name': '대치 SK뷰', 'dong_name': '대치동', 'sgg_cd': '11680',
@@ -225,3 +277,22 @@ if __name__ == '__main__':
     monthly = build_monthly_price(cleaned)
     print("\n월별 대표가:")
     print(monthly)
+
+    # ---- 이상치 배제 로직 자가검증: 정상 시세 다수 + 증여성 저가 직거래 1건 ----
+    def _row(day, price, dealing_gbn='중개거래'):
+        return {
+            'apt_seq': '11680-999', 'complex_name': '테스트단지', 'dong_name': '대치동', 'sgg_cd': '11680',
+            'lawd_cd': '11680', 'area_m2': '84.00', 'price_10k_raw': price, 'deal_year': '2026',
+            'deal_month': '7', 'deal_day': str(day), 'floor': '10', 'built_year': '2016',
+            'dealing_gbn': dealing_gbn, 'cdeal_type': None, 'cdeal_day': None, 'jibun': '1', 'road_name': '삼성로',
+        }
+
+    outlier_sample = pd.DataFrame([
+        _row(1, '280,000'), _row(5, '282,000'), _row(10, '279,000'), _row(15, '281,000'),
+        _row(20, '230,000', dealing_gbn='직거래'),  # 기준가(약28억) 대비 -18% — 증여성 의심으로 배제돼야 함
+    ])
+    outlier_monthly = build_monthly_price(clean_transactions(outlier_sample))
+    excluded = int(outlier_monthly.iloc[0]['excluded_outlier_count'])
+    assert excluded == 1, f"기준가 대비 -18% 직거래는 배제돼야 하는데 배제 건수={excluded}"
+    assert outlier_monthly.iloc[0]['rep_price_10k'] == 282000, "배제 후 대표가(최고가)는 28.2억이어야 함"
+    print(f"\n이상치 배제 자가검증 통과 — 5건 중 {excluded}건 배제, 대표가 {outlier_monthly.iloc[0]['rep_price_10k']}만원")

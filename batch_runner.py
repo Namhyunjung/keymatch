@@ -210,6 +210,9 @@ def transform_and_load(conn, raw: pd.DataFrame) -> int:
 
     # 월별 대표가 재계산 — 이번에 수집된 (단지×월) 건만 갱신.
     monthly = build_monthly_price(cleaned)
+    excluded_total = int(monthly['excluded_outlier_count'].sum())
+    if excluded_total:
+        log.info(f"기준가 이탈 의심 거래 배제 — {excluded_total}건 (증여성 저가거래 등)")
     monthly_rows = [
         (complex_id_map[r['apt_seq']], pg_id, r['ym'], int(r['rep_price_10k']), int(r['txn_count']))
         for _, r in monthly.iterrows()

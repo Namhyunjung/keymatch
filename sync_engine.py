@@ -166,27 +166,54 @@ def evaluate_candidate(
 # ------------------------------------------------------------------
 # 5. 대장단지 판정
 # ------------------------------------------------------------------
+def _quarterly_yms(start_ym: str, end_ym: str) -> list[str]:
+    """국면 구간을 분기(3개월) 간격으로 샘플링. 종료시점은 항상 포함."""
+    idx = int(start_ym[:4]) * 12 + (int(start_ym[4:]) - 1)
+    end_idx = int(end_ym[:4]) * 12 + (int(end_ym[4:]) - 1)
+    out = []
+    while idx <= end_idx:
+        yy, mm = divmod(idx, 12)
+        out.append(f"{yy:04d}{mm + 1:02d}")
+        idx += 3
+    if out[-1] != end_ym:
+        out.append(end_ym)
+    return out
+
+
 def pick_leader(
     price_per_pyeong_by_complex: pd.DataFrame,  # columns: complex_id, ym, price_per_pyeong
     regimes: list[Regime],
     params: AlgoParams,
 ) -> pd.DataFrame:
     """
-    각 국면 종료 시점 기준 평당가 순위를 매기고,
-    상위 leader_top_pct 안에 몇 개 국면 들었는지로 안정성을 계산.
+    국면 종료 시점 스냅샷 하나로만 순위를 매기면, 그 한 시점이 이상치 거래로
+    왜곡됐을 때 대장단지 판정 전체가 흔들린다. 그래서 국면 구간을 분기별로
+    나눠 각 시점의 평당가 순위를 구하고, 국면 내 평균 순위로 상위권 여부를 본다
+    (특정 시점 하나의 왜곡이 다른 시점들에 희석됨).
+
+    상위 leader_top_pct 안에 몇 개 국면 들었는지로 순위 안정성을 계산.
     반환: complex_id별 stable_regimes, is_leader_candidate
     """
     records = []
     for regime in regimes:
-        snap = price_per_pyeong_by_complex[
-            price_per_pyeong_by_complex['ym'] == regime.end_ym
-        ].copy()
-        if snap.empty:
+        sample_yms = _quarterly_yms(regime.start_ym, regime.end_ym)
+        rank_series = []
+        for ym in sample_yms:
+            snap = price_per_pyeong_by_complex[price_per_pyeong_by_complex['ym'] == ym]
+            if snap.empty:
+                continue
+            rank_series.append(
+                snap.set_index('complex_id')['price_per_pyeong'].rank(pct=True, ascending=True)
+            )
+        if not rank_series:
             continue
-        snap['rank_pct'] = snap['price_per_pyeong'].rank(pct=True, ascending=True)
-        snap['top_tier'] = snap['rank_pct'] >= (1 - params.leader_top_pct)
-        snap['regime_id'] = regime.regime_id
-        records.append(snap[['complex_id', 'regime_id', 'top_tier']])
+        avg_rank = pd.concat(rank_series, axis=1).mean(axis=1)  # 결측 시점은 제외하고 평균
+        top_tier = avg_rank >= (1 - params.leader_top_pct)
+        records.append(pd.DataFrame({
+            'complex_id': avg_rank.index,
+            'regime_id': regime.regime_id,
+            'top_tier': top_tier.values,
+        }))
 
     if not records:
         return pd.DataFrame(columns=['complex_id', 'stable_regimes', 'is_leader_candidate'])
@@ -202,6 +229,10 @@ def pick_leader(
 # 예시 실행 (mock 데이터 — 화면 목업에서 쓴 값과 동일한 형태)
 # ------------------------------------------------------------------
 if __name__ == '__main__':
+    import sys
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')  # Windows cp949 콘솔 대응
+
     regimes = [
         Regime(1, '규제강화기', '201705', '201912'),
         Regime(2, '급등기', '202001', '202204'),
@@ -243,3 +274,26 @@ if __name__ == '__main__':
             lr = f"{r['leader_return']:.1%}" if r['leader_return'] is not None else '-'
             cr = f"{r['candidate_return']:.1%}" if r['candidate_return'] is not None else '-'
             print(f"  {r['label']:8s} 대장 {lr:>7s}  후보 {cr:>7s}  동조: {r['synced']}")
+
+    # ---- pick_leader() 자가검증: 분기 샘플링 + 여러시점평균 순위 ----
+    assert _quarterly_yms('201705', '201912') == [
+        '201705', '201708', '201711', '201802', '201805', '201808', '201811',
+        '201902', '201905', '201908', '201911', '201912'
+    ], "분기 샘플링이 3개월 간격으로 안 나옴"
+    assert _quarterly_yms('202401', '202401') == ['202401'], "1개월짜리 국면도 종료시점은 포함해야 함"
+
+    # A=꾸준히 2등이지만 안 흔들림, B=한 시점(202001)만 반짝 1등이고 다음엔 최하위, C=꾸준히 낮음
+    # → 국면 종료시점 스냅샷 하나만 봤으면 B가 대장으로 뽑혔을 상황. 여러시점평균이면 A가 이겨야 함.
+    mock_price = pd.DataFrame([
+        {'complex_id': 'A', 'ym': '202001', 'price_per_pyeong': 100},
+        {'complex_id': 'B', 'ym': '202001', 'price_per_pyeong': 110},  # 반짝 1등
+        {'complex_id': 'C', 'ym': '202001', 'price_per_pyeong': 50},
+        {'complex_id': 'A', 'ym': '202004', 'price_per_pyeong': 100},
+        {'complex_id': 'B', 'ym': '202004', 'price_per_pyeong': 40},   # 다음 시점엔 최하위로 추락
+        {'complex_id': 'C', 'ym': '202004', 'price_per_pyeong': 50},
+    ])
+    test_params = AlgoParams(leader_top_pct=0.2)  # 평균순위 상위 20%만 통과하게 좁혀서 A만 걸리게
+    ranking = pick_leader(mock_price, [Regime(2, '급등기', '202001', '202004')], test_params)
+    top = ranking.iloc[0]
+    assert top['complex_id'] == 'A', "여러 시점 평균이면 꾸준한 2등이 반짝 1등을 이겨야 함"
+    print(f"\npick_leader 자가검증 통과 — 여러시점평균 1위: complex_id={top['complex_id']} (반짝 1등 B에 안 흔들림)")

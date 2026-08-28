@@ -4,3 +4,4 @@ requests==2.32.4
 python-dotenv==1.0.1
 pg8000==1.31.2
 scramp==1.4.6
+scipy==1.9.1
