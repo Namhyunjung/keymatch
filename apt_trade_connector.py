@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 
 
-BASE_URL = "http://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev"
+BASE_URL = "https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev"
 
 # API 응답 필드 → 내부 컬럼명 매핑 (schema.sql 컬럼명과 정렬)
 FIELD_MAP = {

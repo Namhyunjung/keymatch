@@ -121,6 +121,8 @@ def extract(mode: str) -> pd.DataFrame:
 
     connector = AptTradeConnector(service_key=os.environ["APT_API_KEY"])
     raw = connector.fetch_bulk(lawd_cd_list=LAWD_CD_LIST, deal_ymd_list=yms)
+    if raw.empty:
+        raise RuntimeError(f"EXTRACT 결과 0행 — {yms[0]}~{yms[-1]} 전체 호출 실패(API 응답/네트워크 확인)")
     log.info(f"EXTRACT 완료 — {len(raw)}행")
     return raw
 
