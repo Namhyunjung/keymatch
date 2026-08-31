@@ -27,18 +27,85 @@ from sync_engine import AlgoParams, Regime, evaluate_candidate, compute_regime_r
 
 load_dotenv()
 
-LAWD_CD_LIST = ['11680']  # 강남구. regions 시딩과 맞춰서 확장.
-
-# 법정동코드 (행정표준코드관리시스템 code.go.kr 조회, 2026-08 기준 현존 15건: 강남구 자체 + 하위 14개 동)
-# API 응답의 umdNm(동명)으로 단지를 정확한 동에 매핑하는 데 씀.
-GANGNAM_DONG_CODES = {
-    '역삼동': '1168010100', '개포동': '1168010300', '청담동': '1168010400',
-    '삼성동': '1168010500', '대치동': '1168010600', '신사동': '1168010700',
-    '논현동': '1168010800', '압구정동': '1168011000', '세곡동': '1168011100',
-    '자곡동': '1168011200', '율현동': '1168011300', '일원동': '1168011400',
-    '수서동': '1168011500', '도곡동': '1168011800',
+# 법정동코드 (행정표준코드관리시스템 code.go.kr 조회, 2026-08 기준 "존재" 상태만).
+# 구조: LAWD_CD(5자리, MOLIT API 호출용) -> {sido, sigungu, region_code(구 자체, 10자리),
+#       dongs: {동/읍/면명 -> region_code(10자리)}}. API 응답의 umdNm으로 단지를
+# 정확한 동에 매핑하는 데 씀. 동명이 구를 넘어 겹칠 수 있어(예: '중동'이 중원구/기흥구에
+# 둘 다 있음) lawd_cd까지 같이 봐야 함 — transform_and_load 참고.
+REGIONS = {
+    '11680': {
+        'sido': '서울', 'sigungu': '강남구', 'region_code': '1168000000',
+        'dongs': {
+            '역삼동': '1168010100', '개포동': '1168010300', '청담동': '1168010400',
+            '삼성동': '1168010500', '대치동': '1168010600', '신사동': '1168010700',
+            '논현동': '1168010800', '압구정동': '1168011000', '세곡동': '1168011100',
+            '자곡동': '1168011200', '율현동': '1168011300', '일원동': '1168011400',
+            '수서동': '1168011500', '도곡동': '1168011800',
+        },
+    },
+    '41131': {
+        'sido': '경기', 'sigungu': '성남시 수정구', 'region_code': '4113100000',
+        'dongs': {
+            '신흥동': '4113110100', '태평동': '4113110200', '수진동': '4113110300',
+            '단대동': '4113110400', '산성동': '4113110500', '양지동': '4113110600',
+            '복정동': '4113110700', '창곡동': '4113110800', '신촌동': '4113110900',
+            '오야동': '4113111000', '심곡동': '4113111100', '고등동': '4113111200',
+            '상적동': '4113111300', '둔전동': '4113111400', '시흥동': '4113111500',
+            '금토동': '4113111600', '사송동': '4113111700',
+        },
+    },
+    '41133': {
+        'sido': '경기', 'sigungu': '성남시 중원구', 'region_code': '4113300000',
+        'dongs': {
+            '성남동': '4113310100', '금광동': '4113310300', '은행동': '4113310400',
+            '상대원동': '4113310500', '여수동': '4113310600', '도촌동': '4113310700',
+            '갈현동': '4113310800', '하대원동': '4113310900', '중앙동': '4113313200',
+        },
+    },
+    '41135': {
+        'sido': '경기', 'sigungu': '성남시 분당구', 'region_code': '4113500000',
+        'dongs': {
+            '분당동': '4113510100', '수내동': '4113510200', '정자동': '4113510300',
+            '율동': '4113510400', '서현동': '4113510500', '이매동': '4113510600',
+            '야탑동': '4113510700', '판교동': '4113510800', '삼평동': '4113510900',
+            '백현동': '4113511000', '금곡동': '4113511100', '궁내동': '4113511200',
+            '동원동': '4113511300', '구미동': '4113511400', '운중동': '4113511500',
+            '대장동': '4113511600', '석운동': '4113511700', '하산운동': '4113511800',
+        },
+    },
+    '41461': {
+        'sido': '경기', 'sigungu': '용인시 처인구', 'region_code': '4146100000',
+        'dongs': {
+            '김량장동': '4146110100', '역북동': '4146110200', '삼가동': '4146110300',
+            '남동': '4146110400', '유방동': '4146110500', '고림동': '4146110600',
+            '마평동': '4146110700', '운학동': '4146110800', '호동': '4146110900',
+            '해곡동': '4146111000', '포곡읍': '4146125000', '모현면': '4146131000',
+            '남사면': '4146132000', '이동면': '4146133000', '원삼면': '4146134000',
+            '백암면': '4146135000', '양지면': '4146136000',
+        },
+    },
+    '41463': {
+        'sido': '경기', 'sigungu': '용인시 기흥구', 'region_code': '4146300000',
+        'dongs': {
+            '신갈동': '4146310100', '구갈동': '4146310200', '상갈동': '4146310300',
+            '하갈동': '4146310400', '보라동': '4146310500', '지곡동': '4146310600',
+            '공세동': '4146310700', '고매동': '4146310800', '농서동': '4146310900',
+            '서천동': '4146311000', '영덕동': '4146311100', '언남동': '4146311200',
+            '마북동': '4146311300', '청덕동': '4146311400', '동백동': '4146311500',
+            '중동': '4146311600', '상하동': '4146311700', '보정동': '4146311800',
+        },
+    },
+    '41465': {
+        'sido': '경기', 'sigungu': '용인시 수지구', 'region_code': '4146500000',
+        'dongs': {
+            '풍덕천동': '4146510100', '죽전동': '4146510200', '동천동': '4146510300',
+            '고기동': '4146510400', '신봉동': '4146510500', '성복동': '4146510600',
+            '상현동': '4146510700',
+        },
+    },
 }
-GANGNAM_REGION_CODE = '1168000000'  # 강남구 자체 (구 단위 집계용, leader_complexes/sync_summary에서 씀)
+
+LAWD_CD_LIST = list(REGIONS.keys())
 
 logging.basicConfig(
     level=logging.INFO,
@@ -71,15 +138,16 @@ def init_db(conn):
 
 
 def _seed_static(conn):
-    conn.execute(
-        "INSERT INTO regions (region_code, sido, sigungu, eupmyeondong) VALUES (%s,%s,%s,%s)",
-        (GANGNAM_REGION_CODE, '서울', '강남구', None)
-    )
-    for dong_name, code in GANGNAM_DONG_CODES.items():
+    for r in REGIONS.values():
         conn.execute(
             "INSERT INTO regions (region_code, sido, sigungu, eupmyeondong) VALUES (%s,%s,%s,%s)",
-            (code, '서울', '강남구', dong_name)
+            (r['region_code'], r['sido'], r['sigungu'], None)
         )
+        for dong_name, code in r['dongs'].items():
+            conn.execute(
+                "INSERT INTO regions (region_code, sido, sigungu, eupmyeondong) VALUES (%s,%s,%s,%s)",
+                (code, r['sido'], r['sigungu'], dong_name)
+            )
     conn.execute("INSERT INTO pyeong_groups (label, area_min, area_max) VALUES ('84㎡', 81, 88)")
     for r in REGIMES:
         conn.execute(
@@ -154,16 +222,23 @@ def transform_and_load(conn, raw: pd.DataFrame) -> int:
     }
     resolver = HouseholdsResolver(os.environ["APT_API_KEY"])
     resolved_count = 0
+    skipped_apt_seqs = set()
 
     for apt_seq, group in cleaned.groupby('apt_seq'):
         name = group['complex_name'].iloc[0]
         by = group['built_year'].dropna()
         built_year = int(by.iloc[0]) if not by.empty else None
         dong_name = group['dong_name'].iloc[0]
-        region_code = GANGNAM_DONG_CODES.get(dong_name)
+        lawd_cd = group['lawd_cd'].iloc[0]
+        region_info = REGIONS.get(lawd_cd)
+        region_code = region_info['dongs'].get(dong_name) if region_info else None
         if region_code is None:
-            log.warning(f"미등록 동명 '{dong_name}' (apt_seq={apt_seq}) — 강남구로 대체")
-            region_code = GANGNAM_REGION_CODE
+            if region_info is None:
+                log.error(f"미등록 LAWD_CD '{lawd_cd}' (apt_seq={apt_seq}) — REGIONS에 없음, 이 단지 통째로 스킵")
+                skipped_apt_seqs.add(apt_seq)
+                continue
+            log.warning(f"미등록 동명 '{dong_name}' (lawd_cd={lawd_cd}, apt_seq={apt_seq}) — {region_info['sigungu']} 구 단위로 대체")
+            region_code = region_info['region_code']
 
         if apt_seq in already_matched:
             households, danji_code, match_confidence = already_matched[apt_seq], None, None
@@ -184,6 +259,8 @@ def transform_and_load(conn, raw: pd.DataFrame) -> int:
         )
     conn.commit()
     log.info(f"세대수 매칭 — 이번에 새로 매칭 {resolved_count}건, 기존 캐시 {len(already_matched)}건")
+    if skipped_apt_seqs:
+        cleaned = cleaned[~cleaned['apt_seq'].isin(skipped_apt_seqs)].copy()
 
     complex_id_map = {
         row[1]: row[0] for row in conn.execute("SELECT complex_id, apt_seq FROM complexes")
@@ -235,10 +312,10 @@ def transform_and_load(conn, raw: pd.DataFrame) -> int:
 def recompute(conn):
     """
     동(region_code) 단위로 각각 대장단지를 뽑고 그 동 안의 단지끼리만 동조판정한다.
-    (예전엔 강남구 14개 동을 다 섞어서 1등 하나만 뽑았음 — 그래서 압구정동 단지가
-    "서울 강남구 대치동" 화면에 대장단지로 뜨는 모순이 생겼음. 동조판정은 원래
-    "같은 생활권 내에서 대장 따라가는 단지"를 찾는 거라, 행정동을 안 나누면
-    비교 자체가 의미가 없음.)
+    (예전엔 구 안의 동을 다 섞어서 1등 하나만 뽑았음 — 그래서 강남구 기준으로는
+    압구정동 단지가 "서울 강남구 대치동" 화면에 대장단지로 뜨는 모순이 생겼음.
+    동조판정은 원래 "같은 생활권 내에서 대장 따라가는 단지"를 찾는 거라, 행정동을
+    안 나누면 비교 자체가 의미가 없음. REGIONS에 등록된 모든 구×동 조합에 동일 적용.)
     """
     log.info("RECOMPUTE 시작")
     params = AlgoParams()

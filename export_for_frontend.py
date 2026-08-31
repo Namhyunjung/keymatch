@@ -14,7 +14,7 @@ import db
 
 load_dotenv()
 
-DEFAULT_REGION_CODE = '1168010600'  # 대치동 (batch_runner.GANGNAM_DONG_CODES와 동일한 값)
+DEFAULT_REGION_CODE = '1168010600'  # 대치동 (batch_runner.REGIONS['11680']['dongs']와 동일한 값)
 
 
 def month_index(ym: str) -> float:
