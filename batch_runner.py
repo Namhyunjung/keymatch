@@ -14,7 +14,7 @@ import argparse
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -115,11 +115,26 @@ log = logging.getLogger('batch_runner')
 
 SCHEMA_PATH = Path(__file__).parent / 'schema.sql'
 
+# 마지막 국면(진행중)은 종료월을 현재월로 자동 추적 — 배치 돌 때마다 그 시점의
+# "현재"로 갱신됨. 국면 자체가 바뀌었는지(정책 전환점 발생 여부)는 별도 판단 필요.
+# KST 기준으로 계산 — 국내 부동산 도메인이라 UTC로 하면 KST 자정~오전 9시 사이엔
+# 날짜가 하루 밀림. keymatch.html의 nowYm()도 동일하게 KST로 맞춰뒀음.
+_now = datetime.now(timezone(timedelta(hours=9)))
+CURRENT_YM = f"{_now.year}{_now.month:02d}"
+
 REGIMES = [
     Regime(1, '규제강화기', '201705', '201912'),
     Regime(2, '급등기', '202001', '202204'),
     Regime(3, '하락기', '202205', '202312'),
-    Regime(4, '회복기', '202401', '202608'),
+    # 2025-06-27 "6·27 부동산대책"(수도권/규제지역 주담대 6억원 한도 최초 도입,
+    # 다주택자 추가 주담대 전면금지) 전까지만 회복기로 잡음. 그 이전엔
+    # 재건축 규제완화 우세 + 가격반등이었지만, 6.27대책 이후로는 성격이
+    # 달라짐 — 아래 재규제기 참고.
+    Regime(4, '회복기', '202401', '202506'),
+    # 6.27대책(2025.06) 이후: 7월 스트레스DSR 3단계, 10.15대책으로 서울 전역+
+    # 경기 12개 지역 규제지역 확대. 강남3구 거래량도 -43~45%로 꺾임 — 회복기와
+    # 뚜렷이 다른 국면이라 분리함 (2026-09-01, 사용자 지적으로 재검토).
+    Regime(5, '재규제기', '202507', CURRENT_YM),
 ]
 
 
@@ -139,20 +154,31 @@ def init_db(conn):
     # (2026-08-31 run #10, complexes_region_code_fkey).
     _seed_regions(conn)
 
-    # pyeong_groups/regimes는 label에 유니크 제약이 없어서 매번 넣으면 중복 row가 쌓임 —
+    # pyeong_groups는 label에 유니크 제약이 없어서 매번 넣으면 중복 row가 쌓임 —
     # 이건 원래대로 비어있을 때 1회만.
     if conn.execute("SELECT COUNT(*) FROM pyeong_groups").fetchone()[0] == 0:
         log.info("pyeong_groups 시드 없음 — 시딩")
         conn.execute("INSERT INTO pyeong_groups (label, area_min, area_max) VALUES ('84㎡', 81, 88)")
         conn.commit()
-    if conn.execute("SELECT COUNT(*) FROM regimes").fetchone()[0] == 0:
-        log.info("regimes 시드 없음 — 시딩")
-        for r in REGIMES:
-            conn.execute(
-                "INSERT INTO regimes (label, start_ym, end_ym, display_order) VALUES (%s,%s,%s,%s)",
-                (r.label, r.start_ym, r.end_ym, r.regime_id)
-            )
-        conn.commit()
+
+    # regimes는 regions와 같은 이유로 매번 upsert — 마지막 국면(현재 진행중)의 end_ym이
+    # 매달 바뀌고, 국면 자체가 새로 추가되기도 함(2026-09 재규제기 신설). count==0 게이트로
+    # 1회성 시딩만 하면 코드에서 REGIMES를 바꿔도 이미 시딩된 운영 DB엔 반영이 안 됨.
+    # regime_id를 SERIAL 자동채번에 맡기지 않고 REGIMES의 값을 명시해서 넣어야
+    # regime_returns.regime_id FK가 항상 REGIMES 순서와 일치함이 보장됨.
+    _seed_regimes(conn)
+
+
+def _seed_regimes(conn):
+    for r in REGIMES:
+        conn.execute(
+            """INSERT INTO regimes (regime_id, label, start_ym, end_ym, display_order) VALUES (%s,%s,%s,%s,%s)
+               ON CONFLICT (regime_id) DO UPDATE SET
+                 label=EXCLUDED.label, start_ym=EXCLUDED.start_ym,
+                 end_ym=EXCLUDED.end_ym, display_order=EXCLUDED.display_order""",
+            (r.regime_id, r.label, r.start_ym, r.end_ym, r.regime_id)
+        )
+    conn.commit()
 
 
 def _seed_regions(conn):

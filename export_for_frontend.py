@@ -18,6 +18,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 import db
+from batch_runner import REGIMES  # 타임라인 시작/끝을 REGIMES와 한 군데서만 정의 — 따로 하드코딩하면
+                                   # 국면 갱신할 때마다 여기도 같이 고쳐야 하는 걸 잊기 쉬움
+                                   # (마지막 국면 종료월이 202608로 하드코딩돼 있었던 사례, 2026-09-01).
 
 load_dotenv()
 
@@ -25,10 +28,10 @@ DEFAULT_REGION_CODE = '1168010600'  # 대치동 (batch_runner.REGIONS['11680']['
 
 
 def month_index(ym: str) -> float:
-    """ym을 전체 타임라인(2017-05~2026-08) 기준 0~1 t값으로 변환"""
+    """ym을 전체 타임라인(REGIMES 첫 국면 시작~마지막 국면 종료) 기준 0~1 t값으로 변환"""
     y, m = int(ym[:4]), int(ym[4:])
-    start_y, start_m = 2017, 5
-    end_y, end_m = 2026, 8
+    start_y, start_m = int(REGIMES[0].start_ym[:4]), int(REGIMES[0].start_ym[4:])
+    end_y, end_m = int(REGIMES[-1].end_ym[:4]), int(REGIMES[-1].end_ym[4:])
     idx = (y - start_y) * 12 + (m - start_m)
     total = (end_y - start_y) * 12 + (end_m - start_m)
     return round(idx / total, 4)
@@ -61,7 +64,8 @@ def _build_region_data(
         current_price = rows[-1][1] / 10000
 
         regime_flags = []
-        for regime_id in range(1, 5):
+        for regime in REGIMES:
+            regime_id = regime.regime_id
             entry = regime_returns.get((cid, regime_id))
             if entry is None or not entry[0]:
                 regime_flags.append(None)  # 판정불가

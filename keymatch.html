@@ -453,8 +453,8 @@
         <div class="backrow" id="backToDashboard" style="cursor:pointer;">‹ &nbsp;<span id="listLeaderName">대치 SK뷰</span> · 동조단지</div>
 
         <div class="filters" id="listFilters">
-          <div class="chip on" data-mode="full">완전 동조(4/4)</div>
-          <div class="chip" data-mode="partial">부분 동조(3/4+)</div>
+          <div class="chip on" data-mode="full">완전 동조</div>
+          <div class="chip" data-mode="partial">부분 동조</div>
           <div class="chip" data-mode="gapAsc">갭 작은순</div>
           <div class="chip" data-mode="householdsDesc">세대수순</div>
         </div>
@@ -874,24 +874,54 @@
   document.getElementById('backToList').addEventListener('click', ()=> goToScreen('list'));
 
   // ---------- regime definitions ----------
-  const regimes = [
+  // 국면 시작/종료를 'YYYYMM' 문자열로만 정의하고 period/full/width는 여기서 계산함.
+  // 마지막 국면(진행중)은 endYm에 'now'를 넣으면 오늘 기준 현재월로 자동 추적됨 —
+  // 예전엔 종료월(2026.08)이 하드코딩돼 있어서 시간 지나면 그대로 낡아버렸음
+  // (2026-09-01, 사용자 지적으로 발견).
+  function nowYm(){
+    // 보는 사람 브라우저의 로컬 시간대가 아니라 KST 기준 현재월 — batch_runner.py의
+    // CURRENT_YM과 같은 기준이라야 백엔드가 구운 데이터 타임라인과 안 어긋남.
+    const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    return `${kst.getUTCFullYear()}${String(kst.getUTCMonth()+1).padStart(2,'0')}`;
+  }
+  function fmtYm(ym){ return ym.slice(2,4)+'.'+ym.slice(4); }
+  function fmtYmFull(ym){ return ym.slice(0,4)+'.'+ym.slice(4); }
+  function ymMonthSpan(startYm, endYm){
+    const sy=+startYm.slice(0,4), sm=+startYm.slice(4);
+    const ey=+endYm.slice(0,4), em=+endYm.slice(4);
+    return (ey-sy)*12 + (em-sm) + 1;
+  }
+
+  const regimeDefs = [
     {
-      label:'규제강화기', period:'17.05–19.12', full:'2017.05 – 2019.12', width:2.6, tint:'#F3DFDA', dot:'#B24A3D',
+      label:'규제강화기', startYm:'201705', endYm:'201912', tint:'#F3DFDA', dot:'#B24A3D',
       desc:`문재인 정부 초중반 고강도 수요 억제기예요. <b>8.2대책(2017)</b>과 <b>9.13대책(2018)</b>으로 투기과열지구·조정대상지역이 확대 지정되고, 다주택자 양도세 중과와 종합부동산세 강화, LTV·DTI 대출규제가 이어졌어요. 이후 <b>12.16대책(2019)</b>까지 규제가 누적된 구간이에요.`
     },
     {
-      label:'급등기', period:'20.01–22.04', full:'2020.01 – 2022.04', width:2.3, tint:'#DEE8DE', dot:'#5C7A5F',
+      label:'급등기', startYm:'202001', endYm:'202204', tint:'#DEE8DE', dot:'#5C7A5F',
       desc:`<b>임대차3법(2020.07 시행)</b>으로 계약갱신청구권·전월세상한제·전월세신고제가 도입됐고, 6·17·7·10대책으로 종부세 최고세율이 인상됐어요. 동시에 저금리 기조와 유동성 확대가 겹치며 전국적으로 가격이 급등한 국면이에요.`
     },
     {
-      label:'하락기', period:'22.05–23.12', full:'2022.05 – 2023.12', width:1.6, tint:'#F3DFDA', dot:'#B24A3D',
+      label:'하락기', startYm:'202205', endYm:'202312', tint:'#F3DFDA', dot:'#B24A3D',
       desc:`윤석열 정부 출범(2022.05)과 함께 한국은행의 급격한 기준금리 인상이 맞물리며 거래가 급감하고 가격이 조정된 구간이에요. <b>2023.1.3대책</b>으로 강남3구·용산을 제외한 규제지역이 대부분 해제됐고, <b>특례보금자리론(2023.01.30 접수 개시)</b>이 하락세를 진정시켰어요.`
     },
     {
-      label:'회복기', period:'24.01–26.08', full:'2024.01 – 2026.08', width:2.6, tint:'#F4E6C4', dot:'#B9832A',
-      desc:`<b>스트레스 DSR</b>이 2024년 2단계, 2025년 3단계로 단계적으로 강화되며 대출 문턱이 높아졌고, 동시에 재건축·정비사업 규제완화가 병행된 구간이에요. 강남권 등 핵심 입지를 중심으로 반등하며 지역별 양극화가 뚜렷해졌어요.`
+      // 2025.06 6.27대책 전까지만 — 그 이후는 성격이 달라져서 재규제기로 분리함.
+      label:'회복기', startYm:'202401', endYm:'202506', tint:'#F4E6C4', dot:'#B9832A',
+      desc:`<b>스트레스 DSR 2단계(2024)</b>가 적용되긴 했지만, 재건축·정비사업 규제완화가 병행되며 강남권 등 핵심 입지를 중심으로 가격이 반등한 구간이에요. <b>6·27대책(2025.06.27)</b> 발표 전까지로, 대출 규제보다 공급 기대감이 더 크게 작용했어요.`
+    },
+    {
+      // 진행중 — endYm을 'now'로 열어두면 매달 자동 갱신.
+      label:'재규제기', startYm:'202507', endYm: nowYm(), tint:'#F3DFDA', dot:'#B24A3D',
+      desc:`<b>6·27대책(2025.06.27)</b>으로 수도권·규제지역 주택담보대출 한도가 6억원으로 처음 제한되고, 다주택자 추가 주담대가 전면 금지됐어요. 7월 <b>스트레스 DSR 3단계</b> 적용에 이어 <b>10·15대책</b>으로 서울 전역과 경기 12개 지역이 규제지역으로 확대 지정되며, 강남3구 거래량도 큰 폭으로 줄었어요.`
     },
   ];
+  const regimes = regimeDefs.map(r => ({
+    ...r,
+    period: `${fmtYm(r.startYm)}–${fmtYm(r.endYm)}`,
+    full: `${fmtYmFull(r.startYm)} – ${fmtYmFull(r.endYm)}`,
+    width: ymMonthSpan(r.startYm, r.endYm),
+  }));
   const total = regimes.reduce((a,r)=>a+r.width,0);
   let acc = 0;
   const bounds = regimes.map(r=>{ const s=acc/total; acc+=r.width; return {...r, start:s, end:acc/total}; });
@@ -985,7 +1015,7 @@
     const wrap = document.getElementById('unitList');
     let list = units;
     if(listMode === 'full'){
-      list = units.filter(u => u.syncFlags.filter(f=>f===true).length === 4);
+      list = units.filter(u => u.syncFlags.filter(f=>f===true).length === regimes.length);
     } else if(listMode === 'partial'){
       list = units.filter(u => u.syncFlags.filter(f=>f===true).length >= 3);
     } else if(listMode === 'gapAsc'){
