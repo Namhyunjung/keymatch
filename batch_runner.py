@@ -132,28 +132,42 @@ def init_db(conn):
         log.info("스키마 초기화")
         conn.execute(SCHEMA_PATH.read_text(encoding='utf-8'))
         conn.commit()
-    if conn.execute("SELECT COUNT(*) FROM regions").fetchone()[0] == 0:
-        log.info("정적 시드 데이터 없음 — 시딩")
-        _seed_static(conn)
+
+    # regions는 매번 실행 (ON CONFLICT DO NOTHING이라 이미 있으면 그냥 스킵) — REGIONS에
+    # 새 지역을 추가해도 기존 DB에 반영되게. count==0 게이트로 1회성 시딩만 했더니
+    # 성남/용인 추가 후 기존 DB엔 안 들어가서 FK 위반으로 배치가 죽은 적 있음
+    # (2026-08-31 run #10, complexes_region_code_fkey).
+    _seed_regions(conn)
+
+    # pyeong_groups/regimes는 label에 유니크 제약이 없어서 매번 넣으면 중복 row가 쌓임 —
+    # 이건 원래대로 비어있을 때 1회만.
+    if conn.execute("SELECT COUNT(*) FROM pyeong_groups").fetchone()[0] == 0:
+        log.info("pyeong_groups 시드 없음 — 시딩")
+        conn.execute("INSERT INTO pyeong_groups (label, area_min, area_max) VALUES ('84㎡', 81, 88)")
+        conn.commit()
+    if conn.execute("SELECT COUNT(*) FROM regimes").fetchone()[0] == 0:
+        log.info("regimes 시드 없음 — 시딩")
+        for r in REGIMES:
+            conn.execute(
+                "INSERT INTO regimes (label, start_ym, end_ym, display_order) VALUES (%s,%s,%s,%s)",
+                (r.label, r.start_ym, r.end_ym, r.regime_id)
+            )
+        conn.commit()
 
 
-def _seed_static(conn):
+def _seed_regions(conn):
     for r in REGIONS.values():
         conn.execute(
-            "INSERT INTO regions (region_code, sido, sigungu, eupmyeondong) VALUES (%s,%s,%s,%s)",
+            """INSERT INTO regions (region_code, sido, sigungu, eupmyeondong) VALUES (%s,%s,%s,%s)
+               ON CONFLICT (region_code) DO NOTHING""",
             (r['region_code'], r['sido'], r['sigungu'], None)
         )
         for dong_name, code in r['dongs'].items():
             conn.execute(
-                "INSERT INTO regions (region_code, sido, sigungu, eupmyeondong) VALUES (%s,%s,%s,%s)",
+                """INSERT INTO regions (region_code, sido, sigungu, eupmyeondong) VALUES (%s,%s,%s,%s)
+                   ON CONFLICT (region_code) DO NOTHING""",
                 (code, r['sido'], r['sigungu'], dong_name)
             )
-    conn.execute("INSERT INTO pyeong_groups (label, area_min, area_max) VALUES ('84㎡', 81, 88)")
-    for r in REGIMES:
-        conn.execute(
-            "INSERT INTO regimes (label, start_ym, end_ym, display_order) VALUES (%s,%s,%s,%s)",
-            (r.label, r.start_ym, r.end_ym, r.regime_id)
-        )
     conn.commit()
 
 
@@ -462,6 +476,10 @@ def run(mode: str) -> dict:
 
     except Exception as e:
         log.exception("파이프라인 실패")
+        # 실패 지점에 따라 트랜잭션이 abort 상태로 남아있을 수 있음(예: FK 위반) —
+        # rollback 없이 바로 UPDATE하면 "current transaction is aborted"로 또 실패해서
+        # 진짜 원인이 로그에서 묻힘.
+        conn.rollback()
         if run_id is not None:
             conn.execute(
                 "UPDATE pipeline_runs SET finished_at=%s, status='failed', error_msg=%s WHERE run_id=%s",
