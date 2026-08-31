@@ -423,8 +423,8 @@
       <!-- ===================== SCREEN 1 : DASHBOARD ===================== -->
       <div class="screen active" id="dashboard">
         <div class="locbar">
-          <div class="loc">서울 강남구 대치동 <span>▾</span></div>
-          <div class="chip">지역 변경</div>
+          <div class="loc" id="locLabel">서울 강남구 대치동 <span>▾</span></div>
+          <select class="chip" id="regionSelect"></select>
         </div>
 
         <div class="card">
@@ -483,355 +483,366 @@
       </div>
 
 <script type="application/json" id="pipelineData">{
-  "leader": {
-    "name": "래미안대치팰리스",
-    "meta": "1,608세대 · 2015년 준공 · 전용 84㎡ 기준",
-    "currentPrice": 44.0,
-    "pts": [
-      [
-        0.0,
-        100.0
-      ],
-      [
-        0.009,
-        101.8
-      ],
-      [
-        0.018,
-        104.8
-      ],
-      [
-        0.027,
-        110.8
-      ],
-      [
-        0.036,
-        107.8
-      ],
-      [
-        0.0541,
-        116.8
-      ],
-      [
-        0.0631,
-        125.7
-      ],
-      [
-        0.0721,
-        134.7
-      ],
-      [
-        0.0991,
-        136.8
-      ],
-      [
-        0.1261,
-        138.9
-      ],
-      [
-        0.1351,
-        146.7
-      ],
-      [
-        0.2072,
-        140.7
-      ],
-      [
-        0.2162,
-        143.7
-      ],
-      [
-        0.2252,
-        149.7
-      ],
-      [
-        0.2342,
-        155.7
-      ],
-      [
-        0.2432,
-        165.9
-      ],
-      [
-        0.2523,
-        167.5
-      ],
-      [
-        0.2613,
-        167.1
-      ],
-      [
-        0.2703,
-        174.3
-      ],
-      [
-        0.2793,
-        177.8
-      ],
-      [
-        0.3243,
-        175.4
-      ],
-      [
-        0.3333,
-        179.6
-      ],
-      [
-        0.4324,
-        182.0
-      ],
-      [
-        0.4414,
-        186.8
-      ],
-      [
-        0.4505,
-        184.4
-      ],
-      [
-        0.4775,
-        192.2
-      ],
-      [
-        0.5315,
-        197.6
-      ],
-      [
-        0.6126,
-        178.4
-      ],
-      [
-        0.6216,
-        168.9
-      ],
-      [
-        0.6577,
-        185.6
-      ],
-      [
-        0.6667,
-        185.6
-      ],
-      [
-        0.6757,
-        191.6
-      ],
-      [
-        0.6847,
-        194.6
-      ],
-      [
-        0.6937,
-        197.6
-      ],
-      [
-        0.7027,
-        197.6
-      ],
-      [
-        0.7117,
-        193.4
-      ],
-      [
-        0.7387,
-        190.4
-      ],
-      [
-        0.7477,
-        197.6
-      ],
-      [
-        0.7568,
-        205.7
-      ],
-      [
-        0.7658,
-        196.4
-      ],
-      [
-        0.7838,
-        215.6
-      ],
-      [
-        0.7928,
-        218.6
-      ],
-      [
-        0.8108,
-        235.3
-      ],
-      [
-        0.8198,
-        212.6
-      ],
-      [
-        0.8378,
-        239.5
-      ],
-      [
-        0.8468,
-        244.0
-      ],
-      [
-        0.8649,
-        267.7
-      ],
-      [
-        0.8739,
-        281.4
-      ],
-      [
-        0.8829,
-        264.1
-      ],
-      [
-        0.9099,
-        149.7
-      ],
-      [
-        0.9189,
-        284.4
-      ],
-      [
-        0.955,
-        250.9
-      ],
-      [
-        0.973,
-        262.9
-      ],
-      [
-        0.982,
-        263.5
-      ]
-    ]
-  },
-  "units": [
+  "regions": [
     {
-      "id": "complex-138",
-      "name": "선경1차(1동-7동)",
-      "meta": "1,034세대 · 1983년 준공",
-      "gap": "−7.0억",
-      "syncFlags": [
-        true,
-        true,
-        null,
-        true
-      ],
-      "pts": [
-        [
-          0.009,
-          100.0
-        ],
-        [
-          0.036,
-          104.6
-        ],
-        [
-          0.045,
-          107.7
-        ],
-        [
-          0.0631,
-          116.9
-        ],
-        [
-          0.0811,
-          104.6
-        ],
-        [
-          0.0901,
-          120.0
-        ],
-        [
-          0.1261,
-          124.9
-        ],
-        [
-          0.1351,
-          131.7
-        ],
-        [
-          0.2072,
-          126.2
-        ],
-        [
-          0.2252,
-          139.4
-        ],
-        [
-          0.2523,
-          144.6
-        ],
-        [
-          0.2613,
-          149.5
-        ],
-        [
-          0.2703,
-          149.5
-        ],
-        [
-          0.2793,
-          162.2
-        ],
-        [
-          0.3063,
-          159.8
-        ],
-        [
-          0.3333,
-          164.0
-        ],
-        [
-          0.5315,
-          196.9
-        ],
-        [
-          0.7387,
-          180.6
-        ],
-        [
-          0.7568,
-          190.8
-        ],
-        [
-          0.7658,
-          188.9
-        ],
-        [
-          0.7748,
-          196.6
-        ],
-        [
-          0.8378,
-          200.0
-        ],
-        [
-          0.8468,
-          155.7
-        ],
-        [
-          0.9009,
-          233.8
-        ],
-        [
-          0.964,
-          227.7
-        ]
-      ],
-      "currentPrice": 37.0,
-      "syncIndex": 1.0,
-      "passesFilter": true,
-      "info": {
-        "households": "1,034세대",
-        "year": "1983년",
-        "size": "전용 84㎡",
-        "recent": "26.04 · 37.0억"
-      }
+      "code": "1168010600",
+      "label": "서울 강남구 대치동"
     }
   ],
-  "excluded_count": 34
+  "defaultRegion": "1168010600",
+  "data": {
+    "1168010600": {
+      "leader": {
+        "name": "래미안대치팰리스",
+        "meta": "1,608세대 · 2015년 준공 · 전용 84㎡ 기준",
+        "currentPrice": 44.0,
+        "pts": [
+          [
+            0.0,
+            100.0
+          ],
+          [
+            0.009,
+            101.8
+          ],
+          [
+            0.018,
+            104.8
+          ],
+          [
+            0.027,
+            110.8
+          ],
+          [
+            0.036,
+            107.8
+          ],
+          [
+            0.0541,
+            116.8
+          ],
+          [
+            0.0631,
+            125.7
+          ],
+          [
+            0.0721,
+            134.7
+          ],
+          [
+            0.0991,
+            136.8
+          ],
+          [
+            0.1261,
+            138.9
+          ],
+          [
+            0.1351,
+            146.7
+          ],
+          [
+            0.2072,
+            140.7
+          ],
+          [
+            0.2162,
+            143.7
+          ],
+          [
+            0.2252,
+            149.7
+          ],
+          [
+            0.2342,
+            155.7
+          ],
+          [
+            0.2432,
+            165.9
+          ],
+          [
+            0.2523,
+            167.5
+          ],
+          [
+            0.2613,
+            167.1
+          ],
+          [
+            0.2703,
+            174.3
+          ],
+          [
+            0.2793,
+            177.8
+          ],
+          [
+            0.3243,
+            175.4
+          ],
+          [
+            0.3333,
+            179.6
+          ],
+          [
+            0.4324,
+            182.0
+          ],
+          [
+            0.4414,
+            186.8
+          ],
+          [
+            0.4505,
+            184.4
+          ],
+          [
+            0.4775,
+            192.2
+          ],
+          [
+            0.5315,
+            197.6
+          ],
+          [
+            0.6126,
+            178.4
+          ],
+          [
+            0.6216,
+            168.9
+          ],
+          [
+            0.6577,
+            185.6
+          ],
+          [
+            0.6667,
+            185.6
+          ],
+          [
+            0.6757,
+            191.6
+          ],
+          [
+            0.6847,
+            194.6
+          ],
+          [
+            0.6937,
+            197.6
+          ],
+          [
+            0.7027,
+            197.6
+          ],
+          [
+            0.7117,
+            193.4
+          ],
+          [
+            0.7387,
+            190.4
+          ],
+          [
+            0.7477,
+            197.6
+          ],
+          [
+            0.7568,
+            205.7
+          ],
+          [
+            0.7658,
+            196.4
+          ],
+          [
+            0.7838,
+            215.6
+          ],
+          [
+            0.7928,
+            218.6
+          ],
+          [
+            0.8108,
+            235.3
+          ],
+          [
+            0.8198,
+            212.6
+          ],
+          [
+            0.8378,
+            239.5
+          ],
+          [
+            0.8468,
+            244.0
+          ],
+          [
+            0.8649,
+            267.7
+          ],
+          [
+            0.8739,
+            281.4
+          ],
+          [
+            0.8829,
+            264.1
+          ],
+          [
+            0.9099,
+            149.7
+          ],
+          [
+            0.9189,
+            284.4
+          ],
+          [
+            0.955,
+            250.9
+          ],
+          [
+            0.973,
+            262.9
+          ],
+          [
+            0.982,
+            263.5
+          ]
+        ]
+      },
+      "units": [
+        {
+          "id": "complex-138",
+          "name": "선경1차(1동-7동)",
+          "meta": "1,034세대 · 1983년 준공",
+          "gap": "−7.0억",
+          "syncFlags": [
+            true,
+            true,
+            null,
+            true
+          ],
+          "pts": [
+            [
+              0.009,
+              100.0
+            ],
+            [
+              0.036,
+              104.6
+            ],
+            [
+              0.045,
+              107.7
+            ],
+            [
+              0.0631,
+              116.9
+            ],
+            [
+              0.0811,
+              104.6
+            ],
+            [
+              0.0901,
+              120.0
+            ],
+            [
+              0.1261,
+              124.9
+            ],
+            [
+              0.1351,
+              131.7
+            ],
+            [
+              0.2072,
+              126.2
+            ],
+            [
+              0.2252,
+              139.4
+            ],
+            [
+              0.2523,
+              144.6
+            ],
+            [
+              0.2613,
+              149.5
+            ],
+            [
+              0.2703,
+              149.5
+            ],
+            [
+              0.2793,
+              162.2
+            ],
+            [
+              0.3063,
+              159.8
+            ],
+            [
+              0.3333,
+              164.0
+            ],
+            [
+              0.5315,
+              196.9
+            ],
+            [
+              0.7387,
+              180.6
+            ],
+            [
+              0.7568,
+              190.8
+            ],
+            [
+              0.7658,
+              188.9
+            ],
+            [
+              0.7748,
+              196.6
+            ],
+            [
+              0.8378,
+              200.0
+            ],
+            [
+              0.8468,
+              155.7
+            ],
+            [
+              0.9009,
+              233.8
+            ],
+            [
+              0.964,
+              227.7
+            ]
+          ],
+          "currentPrice": 37.0,
+          "syncIndex": 1.0,
+          "passesFilter": true,
+          "info": {
+            "households": "1,034세대",
+            "year": "1983년",
+            "size": "전용 84㎡",
+            "recent": "26.04 · 37.0억"
+          }
+        }
+      ],
+      "excluded_count": 34
+    }
+  }
 }</script>
 
       <!-- ===================== POLICY MODAL ===================== -->
@@ -888,10 +899,9 @@
   // ---------- 파이프라인 산출 데이터 로드 ----------
   // batch_runner.py → export_for_frontend.py가 실제 DB(keymatch.db)에서 뽑아낸 값.
   // 하드코딩된 mock 배열이 아니라 국토부 API 파이프라인 → 동조판정 엔진을 거친 결과임.
+  // shape: { regions:[{code,label}], defaultRegion, data:{ [region_code]: {leader, units} } }
   const pipelineData = JSON.parse(document.getElementById('pipelineData').textContent);
-  const leaderPts = pipelineData.leader.pts;
-  const leaderPrice = { current: pipelineData.leader.currentPrice, name: pipelineData.leader.name, meta: pipelineData.leader.meta };
-  const units = pipelineData.units;
+  let leaderPts, leaderPrice, units, selectedUnitId;
 
   function fmtEok(v){ return v.toFixed(1)+'억'; }
 
@@ -905,22 +915,48 @@
     }).join(' ');
   }
 
-  // ---------- 대장단지 카드 채우기 (더 이상 하드코딩 아님) ----------
-  document.getElementById('leaderName').textContent = leaderPrice.name;
-  document.getElementById('leaderMeta').textContent = leaderPrice.meta;
-  document.getElementById('leaderPrice').textContent = fmtEok(leaderPrice.current);
-  document.getElementById('leaderLegendName').textContent = leaderPrice.name;
-  document.getElementById('compareLeaderName').textContent = leaderPrice.name;
-  document.getElementById('compareLeaderPrice').textContent = fmtEok(leaderPrice.current);
-  document.getElementById('ctaCount').textContent = `${units.length}개`;
-  {
-    const startIdx = leaderPts[0][1], endIdx = leaderPts[leaderPts.length-1][1];
-    const totalReturn = (endIdx/startIdx - 1) * 100;
-    document.getElementById('leaderDelta').textContent = `${totalReturn>=0?'+':''}${totalReturn.toFixed(1)}%`;
-    document.getElementById('leaderPriceLabel').textContent = '2017.05 → 2026.08 실거래가 지수 (base=100)';
+  // ---------- 지역 전환 ----------
+  // "지역 변경" select는 상시 그 문구를 보여주는 트리거 — 고르면 즉시 loadRegion()
+  // 실행하고 선택을 리셋함. 현재 지역 표시는 위의 .loc 라벨이 맡음.
+  function loadRegion(code){
+    const regionData = pipelineData.data[code];
+    if(!regionData){ console.warn('알 수 없는 region_code', code); return; }
+
+    leaderPts = regionData.leader.pts;
+    leaderPrice = { current: regionData.leader.currentPrice, name: regionData.leader.name, meta: regionData.leader.meta };
+    units = regionData.units;
+    selectedUnitId = units[0].id;
+
+    const meta = pipelineData.regions.find(r=>r.code===code);
+    document.getElementById('locLabel').innerHTML = `${meta ? meta.label : code} <span>▾</span>`;
+
+    document.getElementById('leaderName').textContent = leaderPrice.name;
+    document.getElementById('leaderMeta').textContent = leaderPrice.meta;
+    document.getElementById('leaderPrice').textContent = fmtEok(leaderPrice.current);
+    document.getElementById('leaderLegendName').textContent = leaderPrice.name;
+    document.getElementById('compareLeaderName').textContent = leaderPrice.name;
+    document.getElementById('compareLeaderPrice').textContent = fmtEok(leaderPrice.current);
+    document.getElementById('ctaCount').textContent = `${units.length}개`;
+    {
+      const startIdx = leaderPts[0][1], endIdx = leaderPts[leaderPts.length-1][1];
+      const totalReturn = (endIdx/startIdx - 1) * 100;
+      document.getElementById('leaderDelta').textContent = `${totalReturn>=0?'+':''}${totalReturn.toFixed(1)}%`;
+      document.getElementById('leaderPriceLabel').textContent = '2017.05 → 2026.08 실거래가 지수 (base=100)';
+    }
+
+    renderUnitList();
+    renderChart('chart1', [{pts:leaderPts, color:'#26326B'}]);
+    renderCompare();
   }
 
-  let selectedUnitId = units[0].id;
+  const regionSelect = document.getElementById('regionSelect');
+  regionSelect.innerHTML = '<option value="" selected disabled hidden>지역 변경</option>' +
+    pipelineData.regions.map(r=>`<option value="${r.code}">${r.label}</option>`).join('');
+  regionSelect.addEventListener('change', ()=>{
+    if(!regionSelect.value) return;
+    loadRegion(regionSelect.value);
+    regionSelect.selectedIndex = 0;
+  });
 
   function renderUnitList(){
     const wrap = document.getElementById('unitList');
@@ -951,7 +987,6 @@
       });
     });
   }
-  renderUnitList();
 
   function renderCompare(){
     const u = units.find(x=>x.id===selectedUnitId);
@@ -1017,8 +1052,6 @@
     });
   }
 
-  renderChart('chart1', [{pts:leaderPts, color:'#26326B'}]);
-
   function renderRegimeLabels(id){
     const el = document.getElementById(id);
     el.innerHTML = bounds.map((b,i)=>
@@ -1050,7 +1083,7 @@
   });
 
   // ---------- initial render ----------
-  renderCompare();
+  loadRegion(pipelineData.defaultRegion);
 </script>
 </body>
 </html>

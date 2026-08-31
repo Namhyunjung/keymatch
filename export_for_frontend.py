@@ -1,7 +1,14 @@
 """
 export_for_frontend.py
-batch_runner.py가 채운 Supabase(Postgres)를 읽어서, keymatch.html의 하드코딩된
-mock 배열(leaderPts, units)과 동일한 shape의 JSON을 만든다.
+batch_runner.py가 채운 Supabase(Postgres)를 읽어서, keymatch.html의 지역선택 UI가
+바로 소비할 수 있는 멀티 지역 JSON을 만든다.
+
+출력 shape:
+{
+  "regions": [{"code": "1168010600", "label": "서울 강남구 대치동"}, ...],  # 대장단지 판정된 지역만, label순
+  "defaultRegion": "1168010600",
+  "data": { "<region_code>": {"leader": {...}, "units": [...]}, ... }
+}
 """
 from __future__ import annotations
 
@@ -32,46 +39,11 @@ def series_to_pts(rows: list[tuple], base_price: float) -> list[list[float]]:
     return [[month_index(ym), round(price / base_price * 100, 1)] for ym, price in rows]
 
 
-def export(region_code: str = DEFAULT_REGION_CODE) -> dict:
-    conn = db.get_conn()
-
-    row = conn.execute(
-        "SELECT complex_id FROM leader_complexes WHERE region_code=%s ORDER BY as_of DESC LIMIT 1",
-        (region_code,)
-    ).fetchone()
-    if row is None:
-        conn.close()
-        raise RuntimeError(f"region_code={region_code}의 대장단지 판정 결과가 없음 — recompute() 먼저 실행 필요")
-    leader_id = row[0]
-
-    # 단지마다 왕복 쿼리하면 원격 DB에서 느림 — 필요한 테이블 전체를 한 번씩만 긁어서
-    # 메모리(dict)에서 조합함.
-    complex_info = {
-        cid: (name, built_year, households)
-        for cid, name, built_year, households in conn.execute(
-            "SELECT complex_id, complex_name, built_year, households FROM complexes"
-        )
-    }
-
-    monthly_by_complex: dict[int, list[tuple]] = {}
-    for cid, ym, price in conn.execute(
-        "SELECT complex_id, ym, rep_price_10k FROM monthly_price ORDER BY complex_id, ym"
-    ):
-        monthly_by_complex.setdefault(cid, []).append((ym, price))
-
-    regime_returns = {}  # (complex_id, regime_id) -> (is_judgable, return_rate)
-    for cid, regime_id, is_judgable, return_rate in conn.execute(
-        "SELECT complex_id, regime_id, is_judgable, return_rate FROM regime_returns"
-    ):
-        regime_returns[(cid, regime_id)] = (is_judgable, return_rate)
-
-    summaries = conn.execute(
-        """SELECT candidate_complex_id, sync_count, judgable_count, sync_index, current_price_gap_10k
-           FROM sync_summary WHERE leader_complex_id=%s ORDER BY sync_index DESC, current_price_gap_10k ASC""",
-        (leader_id,)
-    ).fetchall()
-    conn.close()
-
+def _build_region_data(
+    leader_id: int, summaries: list[tuple],
+    complex_info: dict, monthly_by_complex: dict, regime_returns: dict,
+) -> dict:
+    """leader_complex_id + sync_summary 행들 -> keymatch.html이 먹는 {leader, units} 하나."""
     leader_name, leader_built, leader_house = complex_info[leader_id]
     leader_rows = monthly_by_complex[leader_id]
     leader_base = leader_rows[0][1]
@@ -130,17 +102,77 @@ def export(region_code: str = DEFAULT_REGION_CODE) -> dict:
     }
 
 
+def export_all(default_region_code: str = DEFAULT_REGION_CODE) -> dict:
+    conn = db.get_conn()
+
+    # 단지마다 왕복 쿼리하면 원격 DB에서 느림 — 필요한 테이블 전체를 한 번씩만 긁어서
+    # 메모리(dict)에서 조합함. 지역이 여러 개로 늘어나도 이 부분은 그대로 재사용됨.
+    complex_info = {
+        cid: (name, built_year, households)
+        for cid, name, built_year, households in conn.execute(
+            "SELECT complex_id, complex_name, built_year, households FROM complexes"
+        )
+    }
+
+    monthly_by_complex: dict[int, list[tuple]] = {}
+    for cid, ym, price in conn.execute(
+        "SELECT complex_id, ym, rep_price_10k FROM monthly_price ORDER BY complex_id, ym"
+    ):
+        monthly_by_complex.setdefault(cid, []).append((ym, price))
+
+    regime_returns = {}  # (complex_id, regime_id) -> (is_judgable, return_rate)
+    for cid, regime_id, is_judgable, return_rate in conn.execute(
+        "SELECT complex_id, regime_id, is_judgable, return_rate FROM regime_returns"
+    ):
+        regime_returns[(cid, regime_id)] = (is_judgable, return_rate)
+
+    region_labels = {}  # region_code -> "시도 시군구 동" 표시용 라벨
+    for region_code, sido, sigungu, eupmyeondong in conn.execute(
+        "SELECT region_code, sido, sigungu, eupmyeondong FROM regions"
+    ):
+        region_labels[region_code] = ' '.join(p for p in (sido, sigungu, eupmyeondong) if p)
+
+    leaders = conn.execute(
+        """SELECT DISTINCT ON (region_code) region_code, complex_id
+           FROM leader_complexes ORDER BY region_code, as_of DESC"""
+    ).fetchall()
+
+    data = {}
+    regions = []
+    for region_code, leader_id in leaders:
+        if leader_id not in complex_info or leader_id not in monthly_by_complex:
+            continue
+        summaries = conn.execute(
+            """SELECT candidate_complex_id, sync_count, judgable_count, sync_index, current_price_gap_10k
+               FROM sync_summary WHERE leader_complex_id=%s ORDER BY sync_index DESC, current_price_gap_10k ASC""",
+            (leader_id,)
+        ).fetchall()
+        region_data = _build_region_data(leader_id, summaries, complex_info, monthly_by_complex, regime_returns)
+        if not region_data['units']:
+            continue  # 동조 필터 통과한 단지가 하나도 없으면 프론트에 노출할 실익 없음
+        data[region_code] = region_data
+        regions.append({'code': region_code, 'label': region_labels.get(region_code, region_code)})
+
+    conn.close()
+
+    if not data:
+        raise RuntimeError("대장단지 판정 결과가 하나도 없음 — recompute() 먼저 실행 필요")
+
+    regions.sort(key=lambda r: r['label'])
+    default_region = default_region_code if default_region_code in data else regions[0]['code']
+
+    return {'regions': regions, 'defaultRegion': default_region, 'data': data}
+
+
 if __name__ == '__main__':
     import sys
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8')  # Windows cp949 콘솔 대응
 
-    data = export()
+    result = export_all()
     out_path = Path(__file__).parent / 'frontend_data.json'
-    out_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
-    print(f"내보내기 완료: {out_path}")
-    print(f"대장단지: {data['leader']['name']} ({data['leader']['currentPrice']}억)")
-    for u in data['units']:
-        flag_str = ''.join('✓' if f else ('·' if f is None else '✕') for f in u['syncFlags'])
-        passes = 'O' if u['passesFilter'] else 'X'
-        print(f"  {u['name']:16s} {u['currentPrice']:5.1f}억  {u['gap']:>8s}  {flag_str}  필터통과:{passes}")
+    out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
+    print(f"내보내기 완료: {out_path} — {len(result['regions'])}개 지역")
+    for r in result['regions']:
+        d = result['data'][r['code']]
+        print(f"  [{r['label']}] 대장단지: {d['leader']['name']} ({d['leader']['currentPrice']}억) · 동조단지 {len(d['units'])}개")
