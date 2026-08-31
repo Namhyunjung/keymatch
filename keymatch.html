@@ -450,7 +450,7 @@
 
       <!-- ===================== SCREEN 2 : LIST ===================== -->
       <div class="screen" id="list">
-        <div class="backrow" id="backToDashboard" style="cursor:pointer;">‹ &nbsp;대치 SK뷰 · 동조단지</div>
+        <div class="backrow" id="backToDashboard" style="cursor:pointer;">‹ &nbsp;<span id="listLeaderName">대치 SK뷰</span> · 동조단지</div>
 
         <div class="filters">
           <div class="chip on">동조 4국면</div>
@@ -934,6 +934,7 @@
     document.getElementById('leaderMeta').textContent = leaderPrice.meta;
     document.getElementById('leaderPrice').textContent = fmtEok(leaderPrice.current);
     document.getElementById('leaderLegendName').textContent = leaderPrice.name;
+    document.getElementById('listLeaderName').textContent = leaderPrice.name;
     document.getElementById('compareLeaderName').textContent = leaderPrice.name;
     document.getElementById('compareLeaderPrice').textContent = fmtEok(leaderPrice.current);
     document.getElementById('ctaCount').textContent = `${units.length}개`;
