@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import difflib
 import re
+import time
 from typing import Optional
 
 import requests
@@ -34,6 +35,21 @@ class KaptAPIError(Exception):
     pass
 
 
+def _get_with_retry(url: str, params: dict, timeout: int, max_retries: int = 3) -> requests.Response:
+    """일시적 네트워크 오류(타임아웃 등)는 재시도 — 지역 늘어나며 신규 단지 조회량이
+    커져서 한 번의 타임아웃이 46분짜리 배치 전체를 죽이는 일(2026-08-31 발생)이 없게."""
+    last_err: Optional[Exception] = None
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(url, params=params, timeout=timeout)
+            resp.raise_for_status()
+            return resp
+        except requests.exceptions.RequestException as e:
+            last_err = e
+            time.sleep(2 ** attempt)
+    raise KaptAPIError(f"{url} params={params} {max_retries}회 재시도 실패: {last_err}")
+
+
 def fetch_legaldong_apt_list(service_key: str, bjd_code: str, timeout: int = 10) -> list[dict]:
     """법정동코드(10자리)로 그 동 안의 단지 목록(kaptCode, kaptName) 전부 가져옴."""
     all_items = []
@@ -41,8 +57,7 @@ def fetch_legaldong_apt_list(service_key: str, bjd_code: str, timeout: int = 10)
     page_size = 50
     while True:
         params = {'serviceKey': service_key, 'bjdCode': bjd_code, 'pageNo': page_no, 'numOfRows': page_size}
-        resp = requests.get(LIST_URL, params=params, timeout=timeout)
-        resp.raise_for_status()
+        resp = _get_with_retry(LIST_URL, params, timeout)
         data = resp.json()
         header = data['response']['header']
         if header['resultCode'] != '00':
@@ -60,8 +75,7 @@ def fetch_legaldong_apt_list(service_key: str, bjd_code: str, timeout: int = 10)
 def fetch_apt_basis(service_key: str, kapt_code: str, timeout: int = 10) -> Optional[dict]:
     """단지코드로 기본정보(세대수/사용승인일 등) 조회. 없으면 None."""
     params = {'serviceKey': service_key, 'kaptCode': kapt_code}
-    resp = requests.get(BASIS_URL, params=params, timeout=timeout)
-    resp.raise_for_status()
+    resp = _get_with_retry(BASIS_URL, params, timeout)
     data = resp.json()
     header = data['response']['header']
     if header['resultCode'] != '00':
@@ -89,7 +103,10 @@ class HouseholdsResolver:
 
     def _basis(self, kapt_code: str) -> Optional[dict]:
         if kapt_code not in self._basis_cache:
-            self._basis_cache[kapt_code] = fetch_apt_basis(self.service_key, kapt_code)
+            try:
+                self._basis_cache[kapt_code] = fetch_apt_basis(self.service_key, kapt_code)
+            except KaptAPIError:
+                self._basis_cache[kapt_code] = None
         return self._basis_cache[kapt_code]
 
     def resolve(self, bjd_code: str, complex_name: str, built_year: Optional[int]) -> tuple:
