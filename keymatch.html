@@ -452,11 +452,11 @@
       <div class="screen" id="list">
         <div class="backrow" id="backToDashboard" style="cursor:pointer;">‹ &nbsp;<span id="listLeaderName">대치 SK뷰</span> · 동조단지</div>
 
-        <div class="filters">
-          <div class="chip on">동조 4국면</div>
-          <div class="chip">동조 3국면+</div>
-          <div class="chip">가격차 큰순</div>
-          <div class="chip">세대수</div>
+        <div class="filters" id="listFilters">
+          <div class="chip on" data-mode="full">완전 동조(4/4)</div>
+          <div class="chip" data-mode="partial">부분 동조(3/4+)</div>
+          <div class="chip" data-mode="gapAsc">갭 작은순</div>
+          <div class="chip" data-mode="householdsDesc">세대수순</div>
         </div>
 
         <div id="unitList"></div>
@@ -959,9 +959,45 @@
     regionSelect.selectedIndex = 0;
   });
 
+  // ---------- 동조단지 목록 필터/정렬 ----------
+  // 완전/부분 동조는 syncFlags(국면별 동조여부, null=판정불가)를 기준으로 거름.
+  // 갭/세대수 정렬은 이미 문자열로 포맷된 필드(u.gap, u.info.households)에서
+  // 숫자만 다시 뽑아 씀 — 백엔드가 별도 숫자 필드를 안 내려줘도 프론트에서 바로 됨.
+  let listMode = 'full';
+  function unitGapAbs(u){
+    const m = String(u.gap).replace(/−/g, '-').match(/-?[\d.]+/);
+    return m ? Math.abs(parseFloat(m[0])) : 0;
+  }
+  function unitHouseholds(u){
+    const m = String(u.info.households).replace(/,/g, '').match(/\d+/);
+    return m ? parseInt(m[0], 10) : 0;
+  }
+  document.querySelectorAll('#listFilters .chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      document.querySelectorAll('#listFilters .chip').forEach(c=>c.classList.remove('on'));
+      chip.classList.add('on');
+      listMode = chip.dataset.mode;
+      renderUnitList();
+    });
+  });
+
   function renderUnitList(){
     const wrap = document.getElementById('unitList');
-    wrap.innerHTML = units.map(u=>{
+    let list = units;
+    if(listMode === 'full'){
+      list = units.filter(u => u.syncFlags.filter(f=>f===true).length === 4);
+    } else if(listMode === 'partial'){
+      list = units.filter(u => u.syncFlags.filter(f=>f===true).length >= 3);
+    } else if(listMode === 'gapAsc'){
+      list = [...units].sort((a,b)=> unitGapAbs(a) - unitGapAbs(b));
+    } else if(listMode === 'householdsDesc'){
+      list = [...units].sort((a,b)=> unitHouseholds(b) - unitHouseholds(a));
+    }
+    if(list.length === 0){
+      wrap.innerHTML = `<div style="padding:40px 4px;text-align:center;color:var(--ink-faint);font-size:.86rem;">조건에 맞는 동조단지가 없어요</div>`;
+      return;
+    }
+    wrap.innerHTML = list.map(u=>{
       const judgable = u.syncFlags.filter(f=>f!==null).length;
       const syncCount = u.syncFlags.filter(f=>f===true).length;
       const dots = u.syncFlags.map(f=>`<span class="d ${f===true?'on':(f===null?'na':'')}"></span>`).join('');
