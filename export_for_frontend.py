@@ -84,7 +84,9 @@ def _build_region_data(
             'pts': pts,
             'currentPrice': round(current_price, 1),
             'syncIndex': float(sync_index),
-            'passesFilter': judgable_count >= 3 and sync_index >= 0.75,
+            # 완전동조(전체 판정국면 동조) 외에도 부분동조(2국면↑ 동조)까지 노출 —
+            # 예전엔 sync_index>=0.75 게이트라 2국면 동조는 프론트에 아예 안 왔음.
+            'passesFilter': judgable_count >= 3 and sync_count >= 2,
             'info': {
                 'households': f"{households:,}세대" if households else '-',
                 'year': f"{built_year or '-'}년",
