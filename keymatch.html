@@ -82930,7 +82930,11 @@
     if(listMode === 'full'){
       list = units.filter(u => u.syncFlags.filter(f=>f===true).length === regimes.length);
     } else if(listMode === 'partial'){
-      list = units.filter(u => u.syncFlags.filter(f=>f===true).length >= 2);
+      // 완전동조(전체 국면 동조)는 부분동조에서 빼야 겹침 없음
+      list = units.filter(u => {
+        const n = u.syncFlags.filter(f=>f===true).length;
+        return n >= 2 && n < regimes.length;
+      });
     } else if(listMode === 'gapAsc'){
       list = [...units].sort((a,b)=> unitGapAbs(a) - unitGapAbs(b));
     } else if(listMode === 'householdsDesc'){
