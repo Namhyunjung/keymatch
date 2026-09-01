@@ -33,7 +33,7 @@ CREATE TABLE complexes (
 -- 3. 평형 그룹 (전용면적 구간 — 84㎡ 국평 기준 ±3㎡ 등으로 그룹핑)
 CREATE TABLE pyeong_groups (
   pyeong_group_id SMALLSERIAL PRIMARY KEY,
-  label           VARCHAR(20) NOT NULL,       -- '59㎡', '84㎡', '114㎡' 등
+  label           VARCHAR(20) NOT NULL UNIQUE, -- '59㎡', '84㎡', '114㎡' 등
   area_min        DECIMAL(5,2) NOT NULL,
   area_max        DECIMAL(5,2) NOT NULL
 );

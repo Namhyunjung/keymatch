@@ -597,6 +597,15 @@ REGIMES = [
     Regime(5, '재규제기', '202507', CURRENT_YM),
 ]
 
+# 평형 그룹 — (label, area_min, area_max). 84㎡ 하나만 보면 그게 없는 인기단지(소형/대형
+# 위주 구축 등)가 통째로 안 잡힘 — 국민평형 3종으로 넓힘. 각 국면 판정은 원래도 "같은
+# 평형끼리만 비교"가 전제라 pyeong_group_id별로 대장단지/동조판정을 완전히 따로 돌림.
+PYEONG_GROUPS = [
+    ('59㎡', 56.0, 62.0),
+    ('84㎡', 81.0, 88.0),
+    ('114㎡', 110.0, 120.0),
+]
+
 
 # ------------------------------------------------------------
 # DB 초기화
@@ -614,12 +623,10 @@ def init_db(conn):
     # (2026-08-31 run #10, complexes_region_code_fkey).
     _seed_regions(conn)
 
-    # pyeong_groups는 label에 유니크 제약이 없어서 매번 넣으면 중복 row가 쌓임 —
-    # 이건 원래대로 비어있을 때 1회만.
-    if conn.execute("SELECT COUNT(*) FROM pyeong_groups").fetchone()[0] == 0:
-        log.info("pyeong_groups 시드 없음 — 시딩")
-        conn.execute("INSERT INTO pyeong_groups (label, area_min, area_max) VALUES ('84㎡', 81, 88)")
-        conn.commit()
+    # regions/regimes와 같은 이유로 매번 upsert — PYEONG_GROUPS에 평형을 추가해도
+    # 기존 DB에 반영되게 (label에 UNIQUE 걸어놓음, count==0 게이트로 1회성 시딩만
+    # 했다가 84㎡ 하나만 있던 운영 DB에 59/114 추가가 안 반영됐던 적 있음).
+    _seed_pyeong_groups(conn)
 
     # regimes는 regions와 같은 이유로 매번 upsert — 마지막 국면(현재 진행중)의 end_ym이
     # 매달 바뀌고, 국면 자체가 새로 추가되기도 함(2026-09 재규제기 신설). count==0 게이트로
@@ -637,6 +644,16 @@ def _seed_regimes(conn):
                  label=EXCLUDED.label, start_ym=EXCLUDED.start_ym,
                  end_ym=EXCLUDED.end_ym, display_order=EXCLUDED.display_order""",
             (r.regime_id, r.label, r.start_ym, r.end_ym, r.regime_id)
+        )
+    conn.commit()
+
+
+def _seed_pyeong_groups(conn):
+    for label, area_min, area_max in PYEONG_GROUPS:
+        conn.execute(
+            """INSERT INTO pyeong_groups (label, area_min, area_max) VALUES (%s,%s,%s)
+               ON CONFLICT (label) DO UPDATE SET area_min=EXCLUDED.area_min, area_max=EXCLUDED.area_max""",
+            (label, area_min, area_max)
         )
     conn.commit()
 
@@ -702,16 +719,9 @@ def transform_and_load(conn, raw: pd.DataFrame) -> int:
     log.info("TRANSFORM 시작")
     cleaned = clean_transactions(raw)
 
-    # 동조판정은 같은 평형끼리만 비교 가능 — pyeong_groups 범위로 거래 필터링.
-    # (전체 평형 섞어서 대표가를 뽑으면 대장단지가 엉뚱한 초대형 평형으로 튐)
-    pg_id, area_min, area_max = conn.execute(
-        "SELECT pyeong_group_id, area_min, area_max FROM pyeong_groups LIMIT 1"
-    ).fetchone()
-    area_min, area_max = float(area_min), float(area_max)
-    cleaned = cleaned[cleaned['area_m2'].between(area_min, area_max)].copy()
-    log.info(f"평형 필터 적용 ({area_min}~{area_max}㎡) — {len(cleaned)}행 남음")
-
-    # 단지 마스터 upsert (apt_seq 기준)
+    # 단지 마스터는 평형 상관없이 "전체" 거래 기준으로 upsert — 예전엔 84㎡ 필터링부터
+    # 하고 그 다음 단지를 만들어서, 84 재고가 없는 단지(소형/대형 위주 구축 등)는 그
+    # 지역에서 제일 인기 많은 곳이어도 통째로 안 잡혔음.
     # 세대수는 국토부 실거래가 API에 없는 필드 — 공동주택 단지목록/기본정보 API(kapt_connector)에서
     # 단지명+준공년도(실거래가 API에서 온 진짜 값)로 매칭해서 채움. 이미 매칭된 건 재조회 안 함
     # (API 왕복비용 있고 세대수는 거의 안 바뀌는 값이라 danji_code가 있으면 재사용).
@@ -766,45 +776,60 @@ def transform_and_load(conn, raw: pd.DataFrame) -> int:
         row[1]: row[0] for row in conn.execute("SELECT complex_id, apt_seq FROM complexes")
     }
 
-    # 원본 거래 적재 (raw_source_id로 중복방지) — 원격 DB라 묶어서 insert
-    txn_rows = []
-    for _, row in cleaned.iterrows():
-        floor = int(row['floor']) if pd.notna(row['floor']) else None
-        txn_day = int(row['txn_day']) if pd.notna(row['txn_day']) else None
-        raw_source_id = f"{row['apt_seq']}_{row['txn_ym']}_{txn_day}_{row['price_10k']}_{floor}"
-        txn_rows.append((
-            complex_id_map[row['apt_seq']], pg_id, row['area_m2'], floor,
-            row['txn_ym'], txn_day, row['price_10k'],
-            bool(row['is_direct_txn']), bool(row['is_cancelled']), raw_source_id
-        ))
-    db.insert_many(
-        conn, 'transactions',
-        ['complex_id', 'pyeong_group_id', 'area_m2', 'floor', 'txn_ym', 'txn_day',
-         'price_10k', 'is_direct_txn', 'is_cancelled', 'raw_source_id'],
-        txn_rows,
-        on_conflict='ON CONFLICT (raw_source_id) DO NOTHING',
-    )
-    conn.commit()
-    rows_ingested = len(txn_rows)
+    # 동조판정은 같은 평형끼리만 비교 가능 — 평형 그룹마다 따로 거래 필터링+적재.
+    # (전체 평형 섞어서 대표가를 뽑으면 대장단지가 엉뚱한 초대형 평형으로 튐)
+    pyeong_groups = conn.execute(
+        "SELECT pyeong_group_id, area_min, area_max FROM pyeong_groups ORDER BY pyeong_group_id"
+    ).fetchall()
 
-    # 월별 대표가 재계산 — 이번에 수집된 (단지×월) 건만 갱신.
-    monthly = build_monthly_price(cleaned)
-    excluded_total = int(monthly['excluded_outlier_count'].sum())
-    if excluded_total:
-        log.info(f"기준가 이탈 의심 거래 배제 — {excluded_total}건 (증여성 저가거래 등)")
-    monthly_rows = [
-        (complex_id_map[r['apt_seq']], pg_id, r['ym'], int(r['rep_price_10k']), int(r['txn_count']))
-        for _, r in monthly.iterrows()
-    ]
-    db.insert_many(
-        conn, 'monthly_price',
-        ['complex_id', 'pyeong_group_id', 'ym', 'rep_price_10k', 'txn_count'],
-        monthly_rows,
-        on_conflict='''ON CONFLICT (complex_id, pyeong_group_id, ym)
-                        DO UPDATE SET rep_price_10k=EXCLUDED.rep_price_10k, txn_count=EXCLUDED.txn_count''',
-    )
-    conn.commit()
-    log.info(f"LOAD 완료 — 거래 {rows_ingested}건, 월별대표가 {len(monthly)}행")
+    rows_ingested = 0
+    for pg_id, area_min, area_max in pyeong_groups:
+        area_min, area_max = float(area_min), float(area_max)
+        pg_cleaned = cleaned[cleaned['area_m2'].between(area_min, area_max)]
+        log.info(f"평형 필터 적용 (pyeong_group_id={pg_id}, {area_min}~{area_max}㎡) — {len(pg_cleaned)}행")
+        if pg_cleaned.empty:
+            continue
+
+        # 원본 거래 적재 (raw_source_id로 중복방지) — 원격 DB라 묶어서 insert
+        txn_rows = []
+        for _, row in pg_cleaned.iterrows():
+            floor = int(row['floor']) if pd.notna(row['floor']) else None
+            txn_day = int(row['txn_day']) if pd.notna(row['txn_day']) else None
+            raw_source_id = f"{row['apt_seq']}_{row['txn_ym']}_{txn_day}_{row['price_10k']}_{floor}"
+            txn_rows.append((
+                complex_id_map[row['apt_seq']], pg_id, row['area_m2'], floor,
+                row['txn_ym'], txn_day, row['price_10k'],
+                bool(row['is_direct_txn']), bool(row['is_cancelled']), raw_source_id
+            ))
+        db.insert_many(
+            conn, 'transactions',
+            ['complex_id', 'pyeong_group_id', 'area_m2', 'floor', 'txn_ym', 'txn_day',
+             'price_10k', 'is_direct_txn', 'is_cancelled', 'raw_source_id'],
+            txn_rows,
+            on_conflict='ON CONFLICT (raw_source_id) DO NOTHING',
+        )
+        conn.commit()
+        rows_ingested += len(txn_rows)
+
+        # 월별 대표가 재계산 — 이번에 수집된 (단지×월) 건만 갱신.
+        monthly = build_monthly_price(pg_cleaned)
+        excluded_total = int(monthly['excluded_outlier_count'].sum())
+        if excluded_total:
+            log.info(f"기준가 이탈 의심 거래 배제 — {excluded_total}건 (증여성 저가거래 등)")
+        monthly_rows = [
+            (complex_id_map[r['apt_seq']], pg_id, r['ym'], int(r['rep_price_10k']), int(r['txn_count']))
+            for _, r in monthly.iterrows()
+        ]
+        db.insert_many(
+            conn, 'monthly_price',
+            ['complex_id', 'pyeong_group_id', 'ym', 'rep_price_10k', 'txn_count'],
+            monthly_rows,
+            on_conflict='''ON CONFLICT (complex_id, pyeong_group_id, ym)
+                            DO UPDATE SET rep_price_10k=EXCLUDED.rep_price_10k, txn_count=EXCLUDED.txn_count''',
+        )
+        conn.commit()
+        log.info(f"LOAD 완료 (pyeong_group_id={pg_id}) — 거래 {len(txn_rows)}건, 월별대표가 {len(monthly)}행")
+
     return rows_ingested
 
 
@@ -821,27 +846,11 @@ def recompute(conn):
     """
     log.info("RECOMPUTE 시작")
     params = AlgoParams()
-    pyeong_group_id = conn.execute("SELECT pyeong_group_id FROM pyeong_groups LIMIT 1").fetchone()[0]
+    pyeong_group_ids = [row[0] for row in conn.execute(
+        "SELECT pyeong_group_id FROM pyeong_groups ORDER BY pyeong_group_id"
+    )]
 
     complexes = conn.execute("SELECT complex_id, apt_seq, complex_name, region_code FROM complexes").fetchall()
-
-    # 단지마다 매번 SELECT 왕복하면 원격 DB에서 느림 — 이 평형의 월별가격 전체를 한 번에 긁어서
-    # 메모리에서 단지별로 나눔
-    all_monthly = pd.DataFrame(
-        conn.execute(
-            "SELECT complex_id, ym, rep_price_10k, txn_count FROM monthly_price WHERE pyeong_group_id=%s ORDER BY ym",
-            (pyeong_group_id,)
-        ).fetchall(),
-        columns=['complex_id', 'ym', 'rep_price_10k', 'txn_count']
-    )
-    monthly_by_complex = {
-        cid: g[['ym', 'rep_price_10k', 'txn_count']].reset_index(drop=True)
-        for cid, g in all_monthly.groupby('complex_id')
-    }
-    empty_monthly = pd.DataFrame(columns=['ym', 'rep_price_10k', 'txn_count'])
-
-    def load_monthly(complex_id: int) -> pd.DataFrame:
-        return monthly_by_complex.get(complex_id, empty_monthly)
 
     conn.execute("DELETE FROM leader_complexes")
     conn.execute("DELETE FROM regime_returns")
@@ -853,66 +862,95 @@ def recompute(conn):
     as_of = datetime.now(timezone.utc).date()
     updated_at = datetime.now(timezone.utc)
 
-    regions = sorted({c[3] for c in complexes})
-    for region_code in regions:
-        region_complexes = [c for c in complexes if c[3] == region_code]
-        if len(region_complexes) < 2:
-            log.info(f"[{region_code}] 단지 {len(region_complexes)}개뿐 — 대장단지 판정 스킵")
-            continue
-
-        region_cids = {c[0] for c in region_complexes}
-        region_price_df = (
-            all_monthly[all_monthly['complex_id'].isin(region_cids)][['complex_id', 'ym', 'rep_price_10k']]
-            .rename(columns={'rep_price_10k': 'price_per_pyeong'})
+    # 대장단지/동조판정은 같은 평형끼리만 비교 가능 — 평형 그룹마다 지역 루프를 통째로 다시 돔
+    # (59㎡ 대장단지 다르고 84㎡ 대장단지 다를 수 있음, 완전히 독립된 판정).
+    for pyeong_group_id in pyeong_group_ids:
+        # 단지마다 매번 SELECT 왕복하면 원격 DB에서 느림 — 이 평형의 월별가격 전체를 한 번에 긁어서
+        # 메모리에서 단지별로 나눔
+        all_monthly = pd.DataFrame(
+            conn.execute(
+                "SELECT complex_id, ym, rep_price_10k, txn_count FROM monthly_price WHERE pyeong_group_id=%s ORDER BY ym",
+                (pyeong_group_id,)
+            ).fetchall(),
+            columns=['complex_id', 'ym', 'rep_price_10k', 'txn_count']
         )
-        ranking = pick_leader(region_price_df, REGIMES, params)
-        if ranking.empty:
-            log.info(f"[{region_code}] 대장단지 판정 불가 — 국면 종료시점 데이터 없음, 스킵")
+        if all_monthly.empty:
+            log.info(f"pyeong_group_id={pyeong_group_id} 월별가격 데이터 없음 — 스킵")
             continue
+        monthly_by_complex = {
+            cid: g[['ym', 'rep_price_10k', 'txn_count']].reset_index(drop=True)
+            for cid, g in all_monthly.groupby('complex_id')
+        }
+        empty_monthly = pd.DataFrame(columns=['ym', 'rep_price_10k', 'txn_count'])
 
-        leader_id = int(ranking.iloc[0]['complex_id'])
-        stable_regimes = int(ranking.iloc[0]['stable_regimes'])
-        leader_apt_seq, leader_name = next((c[1], c[2]) for c in region_complexes if c[0] == leader_id)
-        log.info(
-            f"[{region_code}] 대장단지: {leader_name} ({leader_apt_seq}) "
-            f"stable_regimes={stable_regimes}/{len(REGIMES)}"
-        )
-        leader_rows.append((region_code, pyeong_group_id, leader_id, stable_regimes, as_of))
+        def load_monthly(complex_id: int, _mbc=monthly_by_complex, _empty=empty_monthly) -> pd.DataFrame:
+            return _mbc.get(complex_id, _empty)
 
-        leader_monthly = load_monthly(leader_id)
-        for regime in REGIMES:
-            stat = compute_regime_return(leader_monthly, regime, params)
-            rr = stat['return_rate']
-            regime_return_rows.append((
-                leader_id, pyeong_group_id, regime.regime_id,
-                float(rr) if rr is not None else None,
-                int(stat['txn_count_regime']), bool(stat['is_judgable'])
-            ))
+        # 이 평형에 데이터가 하나라도 있는 단지만 후보로 봄 — 84 대장단지 화면에 59 재고
+        # 없는 단지가 "빈 껍데기"로 섞여 들어가는 것 방지.
+        pg_complex_ids = set(monthly_by_complex.keys())
+        pg_complexes = [c for c in complexes if c[0] in pg_complex_ids]
 
-        leader_price = int(leader_monthly.iloc[-1]['rep_price_10k'])
-        for cid, apt_seq, name, _ in region_complexes:
-            if cid == leader_id:
+        regions = sorted({c[3] for c in pg_complexes})
+        for region_code in regions:
+            region_complexes = [c for c in pg_complexes if c[3] == region_code]
+            if len(region_complexes) < 2:
+                log.info(f"[pg={pyeong_group_id}][{region_code}] 단지 {len(region_complexes)}개뿐 — 대장단지 판정 스킵")
                 continue
-            cand_monthly = load_monthly(cid)
-            if cand_monthly.empty:
-                continue
-            result = evaluate_candidate(leader_monthly, cand_monthly, REGIMES, params)
 
-            for r in result['per_regime']:
-                cr = r['candidate_return']
+            region_cids = {c[0] for c in region_complexes}
+            region_price_df = (
+                all_monthly[all_monthly['complex_id'].isin(region_cids)][['complex_id', 'ym', 'rep_price_10k']]
+                .rename(columns={'rep_price_10k': 'price_per_pyeong'})
+            )
+            ranking = pick_leader(region_price_df, REGIMES, params)
+            if ranking.empty:
+                log.info(f"[pg={pyeong_group_id}][{region_code}] 대장단지 판정 불가 — 국면 종료시점 데이터 없음, 스킵")
+                continue
+
+            leader_id = int(ranking.iloc[0]['complex_id'])
+            stable_regimes = int(ranking.iloc[0]['stable_regimes'])
+            leader_apt_seq, leader_name = next((c[1], c[2]) for c in region_complexes if c[0] == leader_id)
+            log.info(
+                f"[pg={pyeong_group_id}][{region_code}] 대장단지: {leader_name} ({leader_apt_seq}) "
+                f"stable_regimes={stable_regimes}/{len(REGIMES)}"
+            )
+            leader_rows.append((region_code, pyeong_group_id, leader_id, stable_regimes, as_of))
+
+            leader_monthly = load_monthly(leader_id)
+            for regime in REGIMES:
+                stat = compute_regime_return(leader_monthly, regime, params)
+                rr = stat['return_rate']
                 regime_return_rows.append((
-                    cid, pyeong_group_id, r['regime_id'],
-                    float(cr) if cr is not None else None, None, bool(r['judgable'])
+                    leader_id, pyeong_group_id, regime.regime_id,
+                    float(rr) if rr is not None else None,
+                    int(stat['txn_count_regime']), bool(stat['is_judgable'])
                 ))
 
-            cand_price = int(cand_monthly.iloc[-1]['rep_price_10k'])
-            gap = cand_price - leader_price
+            leader_price = int(leader_monthly.iloc[-1]['rep_price_10k'])
+            for cid, apt_seq, name, _ in region_complexes:
+                if cid == leader_id:
+                    continue
+                cand_monthly = load_monthly(cid)
+                if cand_monthly.empty:
+                    continue
+                result = evaluate_candidate(leader_monthly, cand_monthly, REGIMES, params)
 
-            sync_summary_rows.append((
-                region_code, pyeong_group_id, leader_id, cid,
-                int(result['sync_count']), int(result['judgable_count']),
-                float(result['sync_index']), gap, updated_at
-            ))
+                for r in result['per_regime']:
+                    cr = r['candidate_return']
+                    regime_return_rows.append((
+                        cid, pyeong_group_id, r['regime_id'],
+                        float(cr) if cr is not None else None, None, bool(r['judgable'])
+                    ))
+
+                cand_price = int(cand_monthly.iloc[-1]['rep_price_10k'])
+                gap = cand_price - leader_price
+
+                sync_summary_rows.append((
+                    region_code, pyeong_group_id, leader_id, cid,
+                    int(result['sync_count']), int(result['judgable_count']),
+                    float(result['sync_index']), gap, updated_at
+                ))
 
     db.insert_many(
         conn, 'leader_complexes',

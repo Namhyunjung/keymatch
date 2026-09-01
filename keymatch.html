@@ -436,6 +436,8 @@
           <div class="chip" id="regionTrigger" style="cursor:pointer;">지역 변경</div>
         </div>
 
+        <div class="filters" id="pyeongFilters" style="margin-bottom:10px;"></div>
+
         <div class="card">
           <div class="leader-badge" id="leaderBadge" style="cursor:pointer;">대장단지 <span class="info-icon">ⓘ</span></div>
           <div class="complex-name" id="leaderName">대치 SK뷰</div>
@@ -324031,12 +324033,43 @@
     }).join(' ');
   }
 
+  // ---------- 평형 전환 ----------
+  // 지역마다 있는 평형이 다를 수 있음(59㎡ 재고 없는 동 등) — pipelineData.data[code]의
+  // 키가 그 지역에 실제로 있는 평형만이라 거기서 바로 칩을 만듦.
+  let currentRegionCode = null, currentPyeongId = null;
+
+  function renderPyeongFilters(code){
+    const available = Object.keys(pipelineData.data[code] || {}); // pyeong_group_id 문자열 배열
+    const wrap = document.getElementById('pyeongFilters');
+    wrap.innerHTML = available.map(pgIdStr=>{
+      const pg = pipelineData.pyeongGroups.find(p=>String(p.id)===pgIdStr);
+      const on = pgIdStr === String(currentPyeongId) ? ' on' : '';
+      return `<div class="chip${on}" data-pgid="${pgIdStr}">${pg ? pg.label : pgIdStr}</div>`;
+    }).join('');
+    wrap.querySelectorAll('.chip').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        if(chip.dataset.pgid === String(currentPyeongId)) return;
+        loadRegion(code, parseInt(chip.dataset.pgid, 10));
+      });
+    });
+  }
+
   // ---------- 지역 전환 ----------
   // "지역 변경" select는 상시 그 문구를 보여주는 트리거 — 고르면 즉시 loadRegion()
   // 실행하고 선택을 리셋함. 현재 지역 표시는 위의 .loc 라벨이 맡음.
-  function loadRegion(code){
-    const regionData = pipelineData.data[code];
-    if(!regionData){ console.warn('알 수 없는 region_code', code); return; }
+  // pgId 생략하면: 이 지역에 기본평형(84㎡)이 있으면 그걸, 없으면 있는 평형 중 첫번째.
+  function loadRegion(code, pgId){
+    const regionPyeongs = pipelineData.data[code];
+    if(!regionPyeongs){ console.warn('알 수 없는 region_code', code); return; }
+    if(pgId === undefined){
+      const hasDefault = pipelineData.defaultPyeongGroup in regionPyeongs
+        || String(pipelineData.defaultPyeongGroup) in regionPyeongs;
+      pgId = hasDefault ? pipelineData.defaultPyeongGroup : parseInt(Object.keys(regionPyeongs)[0], 10);
+    }
+    const regionData = regionPyeongs[String(pgId)];
+    if(!regionData){ console.warn('이 지역엔 해당 평형 데이터 없음', code, pgId); return; }
+    currentRegionCode = code;
+    currentPyeongId = pgId;
 
     leaderPts = regionData.leader.pts;
     leaderPrice = { current: regionData.leader.currentPrice, name: regionData.leader.name, meta: regionData.leader.meta };
@@ -324060,6 +324093,7 @@
       document.getElementById('leaderDelta').textContent = `${totalReturn>=0?'+':''}${totalReturn.toFixed(1)}%`;
     }
 
+    renderPyeongFilters(code);
     updateFilterAvailability();
     renderUnitList();
     renderChart('chart1', [{pts:leaderPts, color:'#26326B'}]);
