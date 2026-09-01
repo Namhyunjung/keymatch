@@ -27,8 +27,7 @@ CREATE TABLE complexes (
   built_year     SMALLINT,                    -- 준공년도
   danji_code     VARCHAR(20),                 -- 공동주택관리정보시스템 단지코드 (있으면)
   match_confidence DECIMAL(3,2),              -- 이름/주소 매칭 신뢰도 (fuzzy match score)
-  created_at     TIMESTAMP    DEFAULT now(),
-  UNIQUE (complex_name, region_code)
+  created_at     TIMESTAMP    DEFAULT now()
 );
 
 -- 3. 평형 그룹 (전용면적 구간 — 84㎡ 국평 기준 ±3㎡ 등으로 그룹핑)
