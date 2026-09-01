@@ -320,6 +320,7 @@
   /* screen 2: list */
   .filters{ display:flex; gap:7px; margin-bottom:14px; overflow-x:auto; padding-bottom:2px;}
   .filters .chip.on{ background:var(--indigo-deep); border-color:var(--indigo-deep); color:#fff; }
+  .filters .chip.disabled{ opacity:.4; pointer-events:none; }
 
   .unit-card{
     background:var(--paper);
@@ -83108,6 +83109,7 @@
       document.getElementById('leaderDelta').textContent = `${totalReturn>=0?'+':''}${totalReturn.toFixed(1)}%`;
     }
 
+    updateFilterAvailability();
     renderUnitList();
     renderChart('chart1', [{pts:leaderPts, color:'#26326B'}]);
     renderCompare();
@@ -83196,8 +83198,16 @@
     const m = String(u.info.households).replace(/,/g, '').match(/\d+/);
     return m ? parseInt(m[0], 10) : 0;
   }
+  function isFullSync(u){ return u.syncFlags.filter(f=>f===true).length === regimes.length; }
+  function isPartialSync(u){
+    // 완전동조(전체 국면 동조)는 부분동조에서 빼야 겹침 없음
+    const n = u.syncFlags.filter(f=>f===true).length;
+    return n >= 2 && n < regimes.length;
+  }
+
   document.querySelectorAll('#listFilters .chip').forEach(chip=>{
     chip.addEventListener('click', ()=>{
+      if(chip.classList.contains('disabled')) return;
       document.querySelectorAll('#listFilters .chip').forEach(c=>c.classList.remove('on'));
       chip.classList.add('on');
       listMode = chip.dataset.mode;
@@ -83205,17 +83215,33 @@
     });
   });
 
+  // 지역 바뀔 때마다 완전/부분동조 결과가 0개일 수 있음 — 그런 칩은 회색으로 비활성화
+  // (숫자 배지는 다른 칩들에 카운트 표시가 아예 없어서 붙이면 UI 톤이 깨짐, 그냥 눌러도
+  // 소용없는 칩을 미리 막는 쪽을 택함). 지금 선택된 칩이 비활성화되면 다른 칩으로 넘김.
+  function updateFilterAvailability(){
+    const counts = { full: units.filter(isFullSync).length, partial: units.filter(isPartialSync).length };
+    document.querySelectorAll('#listFilters .chip').forEach(chip=>{
+      const isEmpty = chip.dataset.mode in counts && counts[chip.dataset.mode] === 0;
+      chip.classList.toggle('disabled', isEmpty);
+    });
+    const activeChip = document.querySelector('#listFilters .chip.on');
+    if(activeChip && activeChip.classList.contains('disabled')){
+      const fallback = document.querySelector('#listFilters .chip:not(.disabled)');
+      if(fallback){
+        activeChip.classList.remove('on');
+        fallback.classList.add('on');
+        listMode = fallback.dataset.mode;
+      }
+    }
+  }
+
   function renderUnitList(){
     const wrap = document.getElementById('unitList');
     let list = units;
     if(listMode === 'full'){
-      list = units.filter(u => u.syncFlags.filter(f=>f===true).length === regimes.length);
+      list = units.filter(isFullSync);
     } else if(listMode === 'partial'){
-      // 완전동조(전체 국면 동조)는 부분동조에서 빼야 겹침 없음
-      list = units.filter(u => {
-        const n = u.syncFlags.filter(f=>f===true).length;
-        return n >= 2 && n < regimes.length;
-      });
+      list = units.filter(isPartialSync);
     } else if(listMode === 'gapAsc'){
       list = [...units].sort((a,b)=> unitGapAbs(a) - unitGapAbs(b));
     } else if(listMode === 'householdsDesc'){
