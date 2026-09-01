@@ -443,7 +443,7 @@
             <div class="price" id="leaderPrice">28.5억</div>
             <div class="delta up" id="leaderDelta">+105.0%</div>
           </div>
-          <div class="price-label" id="leaderPriceLabel">2017.05 → 2026.08</div>
+          <div class="price-label"><span id="leaderPriceLabel">2017.05 → 2026.08</span> <span class="info-icon" id="priceInfoTrigger" style="cursor:pointer;">ⓘ</span></div>
 
           <div class="chart-legend">
             <span><span class="dot" style="background:var(--indigo)"></span><span id="leaderLegendName">대치 SK뷰</span> 실거래가 지수</span>
@@ -82940,6 +82940,25 @@
         </div>
       </div>
 
+      <!-- ===================== PRICE INFO MODAL ===================== -->
+      <div class="modal-overlay" id="priceInfoModal">
+        <div class="modal-sheet">
+          <div class="modal-handle"></div>
+          <div class="modal-title">가격이랑 %는 뭘 의미해요?</div>
+          <div class="modal-desc">
+            <b>가격(억)</b>은 최근월 <b>대표가</b>예요. 그달 거래 중 증여성 저가거래 같은 이상치를
+            먼저 걸러내고, 남은 거래의 <b>최고가</b>를 씀 — 거래 1건 값이 아니라 그달 시세를
+            대표하는 값이에요.
+          </div>
+          <div class="modal-desc">
+            <b>%</b>는 그래프의 실거래가 지수 기준, <b>2017.05 대비 지금까지 누적 등락률</b>이에요.
+            2017.05 가격을 100으로 놓고 매달 가격을 그 대비 비율로 환산했기 때문에, 지수값에서
+            100을 빼면 그대로 등락률이 나와요(지수 205 = +105%).
+          </div>
+          <button class="modal-close" id="priceInfoModalClose">닫기</button>
+        </div>
+      </div>
+
       <!-- ===================== REGION PICKER MODAL ===================== -->
       <div class="modal-overlay" id="regionModal">
         <div class="modal-sheet">
@@ -83141,6 +83160,17 @@
   });
   document.getElementById('leaderInfoModal').addEventListener('click', (e)=>{
     if(e.target.id==='leaderInfoModal') e.target.classList.remove('show');
+  });
+
+  // ---------- 가격/% 안내 모달 ----------
+  document.getElementById('priceInfoTrigger').addEventListener('click', ()=>{
+    document.getElementById('priceInfoModal').classList.add('show');
+  });
+  document.getElementById('priceInfoModalClose').addEventListener('click', ()=>{
+    document.getElementById('priceInfoModal').classList.remove('show');
+  });
+  document.getElementById('priceInfoModal').addEventListener('click', (e)=>{
+    if(e.target.id==='priceInfoModal') e.target.classList.remove('show');
   });
 
   // ---------- 동조단지 목록 필터/정렬 ----------
