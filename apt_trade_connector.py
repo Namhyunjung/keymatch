@@ -153,6 +153,9 @@ def clean_transactions(raw: pd.DataFrame) -> pd.DataFrame:
     )
     df['txn_ym'] = df['deal_year'].str.zfill(4) + df['deal_month'].str.zfill(2)
     df['txn_day'] = df['deal_day'].astype('Int64')
+    # floor는 API가 가끔 빈 문자열로 내려줌(지하/상가 등 층 정보 없는 거래) — smallint 컬럼에
+    # ''를 그대로 넣으면 DB에서 터짐. 숫자 아니면 NULL로.
+    df['floor'] = pd.to_numeric(df['floor'], errors='coerce').astype('Int64')
     df['area_m2'] = df['area_m2'].astype(float)
     df['built_year'] = df['built_year'].astype('Int64')
 

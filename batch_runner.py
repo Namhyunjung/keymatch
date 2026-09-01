@@ -309,10 +309,12 @@ def transform_and_load(conn, raw: pd.DataFrame) -> int:
     # 원본 거래 적재 (raw_source_id로 중복방지) — 원격 DB라 묶어서 insert
     txn_rows = []
     for _, row in cleaned.iterrows():
-        raw_source_id = f"{row['apt_seq']}_{row['txn_ym']}_{row['txn_day']}_{row['price_10k']}_{row['floor']}"
+        floor = int(row['floor']) if pd.notna(row['floor']) else None
+        txn_day = int(row['txn_day']) if pd.notna(row['txn_day']) else None
+        raw_source_id = f"{row['apt_seq']}_{row['txn_ym']}_{txn_day}_{row['price_10k']}_{floor}"
         txn_rows.append((
-            complex_id_map[row['apt_seq']], pg_id, row['area_m2'], row['floor'],
-            row['txn_ym'], row['txn_day'], row['price_10k'],
+            complex_id_map[row['apt_seq']], pg_id, row['area_m2'], floor,
+            row['txn_ym'], txn_day, row['price_10k'],
             bool(row['is_direct_txn']), bool(row['is_cancelled']), raw_source_id
         ))
     db.insert_many(
