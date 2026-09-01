@@ -359,8 +359,7 @@
   .sync-dots .d.on{ background:var(--gold); }
   .sync-dots .d.na{ background:repeating-linear-gradient(45deg, var(--ink-faint), var(--ink-faint) 1px, transparent 1px, transparent 2px); }
   .sync-dots .txt{ font-size:.68rem; color:var(--ink-soft); font-weight:700; margin-left:4px; }
-  .sync-legend{ font-size:.68rem; color:var(--ink-faint); margin-bottom:10px; line-height:1.5; }
-  .sync-legend .d{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:3px; vertical-align:middle; }
+  .modal-desc .d{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:3px; vertical-align:middle; }
 
   .unit-right{ text-align:right; flex-shrink:0; }
   .unit-price{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:.98rem; }
@@ -368,7 +367,7 @@
   .unit-spark{ width:64px; height:22px; margin-top:6px; }
 
   /* screen 3: compare */
-  .backrow{ display:flex; align-items:center; gap:8px; padding:8px 0 4px; font-size:.82rem; color:var(--ink-soft); font-weight:600; }
+  .backrow{ display:flex; align-items:center; gap:8px; padding:8px 0 14px; font-size:.82rem; color:var(--ink-soft); font-weight:600; }
   .compare-header{ margin-bottom:12px; }
   .vs-row{ display:flex; align-items:center; gap:8px; margin-bottom:4px; }
   .vs-row .who{ font-size:.85rem; font-weight:700; }
@@ -469,13 +468,7 @@
           <div class="chip" data-mode="partial">부분 동조</div>
           <div class="chip" data-mode="gapAsc">갭 작은순</div>
           <div class="chip" data-mode="householdsDesc">세대수순</div>
-        </div>
-
-        <div class="sync-legend">
-          <span class="d" style="background:var(--gold);"></span>동조
-          <span class="d" style="background:var(--line);"></span>비동조
-          <span class="d" style="background:repeating-linear-gradient(45deg, var(--ink-faint), var(--ink-faint) 1px, transparent 1px, transparent 2px);"></span>거래부족으로 판정불가
-          — 점은 항상 국면 <span id="syncLegendTotal">5</span>개, "N/M"의 M은 그중 판정 가능했던 국면 수예요
+          <span class="info-icon" id="syncLegendTrigger" style="cursor:pointer; align-self:center; margin-left:2px;">ⓘ</span>
         </div>
 
         <div id="unitList"></div>
@@ -82970,6 +82963,24 @@
         </div>
       </div>
 
+      <!-- ===================== SYNC DOT LEGEND MODAL ===================== -->
+      <div class="modal-overlay" id="syncLegendModal">
+        <div class="modal-sheet">
+          <div class="modal-handle"></div>
+          <div class="modal-title">점은 무슨 뜻이에요?</div>
+          <div class="modal-desc">
+            <span class="d" style="background:var(--gold);"></span>동조&emsp;
+            <span class="d" style="background:var(--line);"></span>비동조&emsp;
+            <span class="d" style="background:repeating-linear-gradient(45deg, var(--ink-faint), var(--ink-faint) 1px, transparent 1px, transparent 2px);"></span>거래부족으로 판정불가
+          </div>
+          <div class="modal-desc">
+            점은 항상 국면 <span id="syncLegendTotal">5</span>개예요. 목록에 나오는 "N/M"의 M은
+            그중 판정 가능했던(거래가 충분했던) 국면 수예요.
+          </div>
+          <button class="modal-close" id="syncLegendModalClose">닫기</button>
+        </div>
+      </div>
+
       <!-- ===================== REGION PICKER MODAL ===================== -->
       <div class="modal-overlay" id="regionModal">
         <div class="modal-sheet">
@@ -83183,6 +83194,17 @@
   });
   document.getElementById('priceInfoModal').addEventListener('click', (e)=>{
     if(e.target.id==='priceInfoModal') e.target.classList.remove('show');
+  });
+
+  // ---------- 동조점(dot) 범례 모달 ----------
+  document.getElementById('syncLegendTrigger').addEventListener('click', ()=>{
+    document.getElementById('syncLegendModal').classList.add('show');
+  });
+  document.getElementById('syncLegendModalClose').addEventListener('click', ()=>{
+    document.getElementById('syncLegendModal').classList.remove('show');
+  });
+  document.getElementById('syncLegendModal').addEventListener('click', (e)=>{
+    if(e.target.id==='syncLegendModal') e.target.classList.remove('show');
   });
 
   // ---------- 동조단지 목록 필터/정렬 ----------
