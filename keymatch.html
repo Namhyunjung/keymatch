@@ -200,7 +200,6 @@
     padding:10px 0 14px;
   }
   .locbar .loc{ font-weight:700; font-size:1rem; }
-  .locbar .loc span{ color:var(--ink-faint); font-weight:500; font-size:.86rem; }
   .chip{
     font-size:.7rem;
     background:var(--paper);
@@ -430,7 +429,7 @@
       <!-- ===================== SCREEN 1 : DASHBOARD ===================== -->
       <div class="screen active" id="dashboard">
         <div class="locbar">
-          <div class="loc" id="locLabel">서울 강남구 대치동 <span>▾</span></div>
+          <div class="loc" id="locLabel">서울 강남구 대치동</div>
           <div class="chip" id="regionTrigger" style="cursor:pointer;">지역 변경</div>
         </div>
 
@@ -83043,7 +83042,7 @@
     selectedUnitId = units[0].id;
 
     const meta = pipelineData.regions.find(r=>r.code===code);
-    document.getElementById('locLabel').innerHTML = `${meta ? meta.label : code} <span>▾</span>`;
+    document.getElementById('locLabel').textContent = meta ? meta.label : code;
 
     document.getElementById('leaderName').textContent = leaderPrice.name;
     document.getElementById('leaderMeta').textContent = leaderPrice.meta;
