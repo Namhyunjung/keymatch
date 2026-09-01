@@ -132,11 +132,11 @@ def export_all(default_region_code: str = DEFAULT_REGION_CODE) -> dict:
     ):
         regime_returns[(cid, regime_id)] = (is_judgable, return_rate)
 
-    region_labels = {}  # region_code -> "시도 시군구 동" 표시용 라벨
+    region_parts = {}  # region_code -> (sido, sigungu, dong) — 프론트 시/도>시/군/구>읍면동 계층선택용
     for region_code, sido, sigungu, eupmyeondong in conn.execute(
         "SELECT region_code, sido, sigungu, eupmyeondong FROM regions"
     ):
-        region_labels[region_code] = ' '.join(p for p in (sido, sigungu, eupmyeondong) if p)
+        region_parts[region_code] = (sido, sigungu, eupmyeondong)
 
     leaders = conn.execute(
         """SELECT DISTINCT ON (region_code) region_code, complex_id
@@ -157,7 +157,9 @@ def export_all(default_region_code: str = DEFAULT_REGION_CODE) -> dict:
         if not region_data['units']:
             continue  # 동조 필터 통과한 단지가 하나도 없으면 프론트에 노출할 실익 없음
         data[region_code] = region_data
-        regions.append({'code': region_code, 'label': region_labels.get(region_code, region_code)})
+        sido, sigungu, dong = region_parts.get(region_code, (None, None, None))
+        label = ' '.join(p for p in (sido, sigungu, dong) if p) or region_code
+        regions.append({'code': region_code, 'label': label, 'sido': sido, 'sigungu': sigungu, 'dong': dong})
 
     conn.close()
 
