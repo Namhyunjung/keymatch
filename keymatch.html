@@ -231,6 +231,7 @@
     letter-spacing:.02em;
   }
   .leader-badge::before{ content:'★'; color:var(--gold); font-size:.7rem; }
+  .leader-badge .info-icon{ opacity:.75; font-size:.85em; }
 
   .complex-name{ font-size:1.28rem; font-weight:800; letter-spacing:-.01em; margin-bottom:2px; }
   .complex-meta{ font-size:.78rem; color:var(--ink-soft); margin-bottom:14px; }
@@ -434,7 +435,7 @@
         </div>
 
         <div class="card">
-          <div class="leader-badge">대장단지</div>
+          <div class="leader-badge" id="leaderBadge" style="cursor:pointer;">대장단지 <span class="info-icon">ⓘ</span></div>
           <div class="complex-name" id="leaderName">대치 SK뷰</div>
           <div class="complex-meta" id="leaderMeta">1,631세대 · 2016년 준공 · 전용 84㎡ 기준</div>
 
@@ -82920,6 +82921,25 @@
         </div>
       </div>
 
+      <!-- ===================== LEADER INFO MODAL ===================== -->
+      <div class="modal-overlay" id="leaderInfoModal">
+        <div class="modal-sheet">
+          <div class="modal-handle"></div>
+          <div class="modal-title">대장단지는 어떻게 정해지나요?</div>
+          <div class="modal-desc">
+            <b>최근 시세가 가장 높은 단지</b>가 아니에요. 규제강화기·급등기·하락기·회복기·재규제기
+            5개 국면마다 평당가 순위를 매기고, <b>국면 안에서도 여러 시점(분기별)의 순위를 평균</b>
+            내서 반짝 1등에 흔들리지 않게 해요.
+          </div>
+          <div class="modal-desc">
+            그렇게 국면별로 상위 10% 안에 든 횟수가 가장 많은 단지, 즉 <b>여러 시기에 걸쳐
+            꾸준히 상위권을 지킨 단지</b>가 대장단지가 돼요. 최근 한 시점에 가격이 역전됐다고
+            바로 바뀌지 않아요.
+          </div>
+          <button class="modal-close" id="leaderInfoModalClose">닫기</button>
+        </div>
+      </div>
+
       <!-- ===================== REGION PICKER MODAL ===================== -->
       <div class="modal-overlay" id="regionModal">
         <div class="modal-sheet">
@@ -83110,6 +83130,17 @@
   });
   document.getElementById('regionModal').addEventListener('click', (e)=>{
     if(e.target.id==='regionModal') e.target.classList.remove('show');
+  });
+
+  // ---------- 대장단지 판정기준 안내 모달 ----------
+  document.getElementById('leaderBadge').addEventListener('click', ()=>{
+    document.getElementById('leaderInfoModal').classList.add('show');
+  });
+  document.getElementById('leaderInfoModalClose').addEventListener('click', ()=>{
+    document.getElementById('leaderInfoModal').classList.remove('show');
+  });
+  document.getElementById('leaderInfoModal').addEventListener('click', (e)=>{
+    if(e.target.id==='leaderInfoModal') e.target.classList.remove('show');
   });
 
   // ---------- 동조단지 목록 필터/정렬 ----------
