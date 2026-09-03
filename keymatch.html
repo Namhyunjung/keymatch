@@ -154,20 +154,6 @@
     display:flex;
     flex-direction:column;
   }
-  .statusbar{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:14px 22px 4px;
-    font-family:'IBM Plex Mono', monospace;
-    font-size:.72rem;
-    color:var(--ink);
-    font-weight:600;
-    flex-shrink:0;
-  }
-  .statusbar .dots{ display:flex; gap:3px; align-items:center; }
-  .statusbar .dots span{ width:4px; height:4px; border-radius:50%; background:var(--ink); display:block; }
-
   .screen{
     flex:1;
     overflow-y:auto;
@@ -430,11 +416,6 @@
 
   <div class="frame">
     <div class="screen-wrap">
-      <div class="statusbar">
-        <span>9:41</span>
-        <span class="dots"><span></span><span></span><span></span></span>
-      </div>
-
       <!-- ===================== SCREEN 1 : DASHBOARD ===================== -->
       <div class="screen active" id="dashboard">
         <div class="locbar">
