@@ -404,6 +404,9 @@
   .info-item{ background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
   .info-item .k{ font-size:.66rem; color:var(--ink-faint); margin-bottom:3px; font-weight:600; }
   .info-item .v{ font-size:.86rem; font-weight:700; font-family:'IBM Plex Mono', monospace; }
+  .info-item.full{ grid-column:1 / -1; }
+  .addr-link{ color:var(--gold); text-decoration:none; }
+  .addr-link:hover, .addr-link:active{ text-decoration:underline; }
 
   .section-title{ font-size:.98rem; font-weight:800; margin:18px 0 10px; }
 </style>
@@ -484,8 +487,8 @@
         <div class="backrow" id="backToList" style="cursor:pointer;">‹ &nbsp;<span id="compareUnitName"></span></div>
 
         <div class="card compare-header">
-          <div class="vs-row"><span class="who lead">● 대장 · <span id="compareLeaderName">대치 SK뷰</span></span><span class="p" id="compareLeaderPrice">28.5억</span><a class="map-link" id="mapLinkLeader" href="#" target="_blank" rel="noopener" aria-label="지도에서 보기">🗺️</a></div>
-          <div class="vs-row"><span class="who sync" id="compareUnitName2"></span><span class="p" id="comparePrice"></span><a class="map-link" id="mapLinkUnit" href="#" target="_blank" rel="noopener" aria-label="지도에서 보기">🗺️</a></div>
+          <div class="vs-row"><span class="who lead">● 대장 · <span id="compareLeaderName">대치 SK뷰</span></span><span class="p" id="compareLeaderPrice">28.5억</span></div>
+          <div class="vs-row"><span class="who sync" id="compareUnitName2"></span><span class="p" id="comparePrice"></span></div>
           <div class="price-label" style="margin-top:2px;" id="compareSummary"></div>
 
           <svg class="chart" id="chart2" viewBox="0 0 340 150" style="margin-top:8px;"></svg>
@@ -362400,12 +362403,8 @@
     document.getElementById('compareUnitName2').textContent = '● ' + u.name;
     document.getElementById('comparePrice').textContent = fmtEok(u.currentPrice);
     document.getElementById('compareSummary').textContent = `현재 갭 ${u.gap} · ${syncCount}개 국면 동조 (판정가능 ${judgable}개 중)`;
-    {
-      const regionMeta = pipelineData.regions.find(r=>r.code===currentRegionCode);
-      const regionLabel = regionMeta ? regionMeta.label : '';
-      document.getElementById('mapLinkLeader').href = naverMapUrl(`${regionLabel} ${leaderPrice.name}`);
-      document.getElementById('mapLinkUnit').href = naverMapUrl(`${regionLabel} ${u.name}`);
-    }
+    const regionMeta = pipelineData.regions.find(r=>r.code===currentRegionCode);
+    const regionLabel = regionMeta ? regionMeta.label : '';
     renderChart('chart2', [{pts:leaderPts, color:'#26326B'}, {pts:u.pts, color:'#B9832A'}]);
 
     const badgeGrid = document.getElementById('badgeGrid');
@@ -362429,6 +362428,7 @@
       <div class="info-item"><div class="k">준공년도</div><div class="v">${u.info.year}</div></div>
       <div class="info-item"><div class="k">기준 평형</div><div class="v">${u.info.size}</div></div>
       <div class="info-item"><div class="k">최근 거래</div><div class="v">${u.info.recent}</div></div>
+      <div class="info-item full"><div class="k">위치</div><div class="v"><a class="addr-link" href="${naverMapUrl(regionLabel + ' ' + u.name)}" target="_blank" rel="noopener">${regionLabel} ›</a></div></div>
     `;
   }
 
