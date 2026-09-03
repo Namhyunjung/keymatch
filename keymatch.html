@@ -374,6 +374,9 @@
   .vs-row .who.lead{ color:var(--indigo); }
   .vs-row .who.sync{ color:var(--gold); }
   .vs-row .p{ font-family:'IBM Plex Mono', monospace; font-size:.85rem; font-weight:600; margin-left:auto; }
+  .map-link{ text-decoration:none; font-size:.9em; opacity:.7; line-height:1; }
+  .map-link:hover, .map-link:active{ opacity:1; }
+  .complex-name .map-link{ margin-left:6px; vertical-align:middle; }
 
   .badge-grid{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
   .badge-row{
@@ -440,7 +443,7 @@
 
         <div class="card">
           <div class="leader-badge" id="leaderBadge" style="cursor:pointer;">대장단지 <span class="info-icon">ⓘ</span></div>
-          <div class="complex-name" id="leaderName">대치 SK뷰</div>
+          <div class="complex-name"><span id="leaderName">대치 SK뷰</span><a class="map-link" id="mapLinkDash" href="#" target="_blank" rel="noopener" aria-label="지도에서 보기">🗺️</a></div>
           <div class="complex-meta" id="leaderMeta">1,631세대 · 2016년 준공 · 전용 84㎡ 기준</div>
 
           <div class="price-row">
@@ -481,8 +484,8 @@
         <div class="backrow" id="backToList" style="cursor:pointer;">‹ &nbsp;<span id="compareUnitName"></span></div>
 
         <div class="card compare-header">
-          <div class="vs-row"><span class="who lead">● 대장 · <span id="compareLeaderName">대치 SK뷰</span></span><span class="p" id="compareLeaderPrice">28.5억</span></div>
-          <div class="vs-row"><span class="who sync" id="compareUnitName2"></span><span class="p" id="comparePrice"></span></div>
+          <div class="vs-row"><span class="who lead">● 대장 · <span id="compareLeaderName">대치 SK뷰</span></span><span class="p" id="compareLeaderPrice">28.5억</span><a class="map-link" id="mapLinkLeader" href="#" target="_blank" rel="noopener" aria-label="지도에서 보기">🗺️</a></div>
+          <div class="vs-row"><span class="who sync" id="compareUnitName2"></span><span class="p" id="comparePrice"></span><a class="map-link" id="mapLinkUnit" href="#" target="_blank" rel="noopener" aria-label="지도에서 보기">🗺️</a></div>
           <div class="price-label" style="margin-top:2px;" id="compareSummary"></div>
 
           <svg class="chart" id="chart2" viewBox="0 0 340 150" style="margin-top:8px;"></svg>
@@ -362129,6 +362132,13 @@
 
   function fmtEok(v){ return v.toFixed(1)+'억'; }
 
+  // 네이버 지도 검색 링크 — 모바일에서 네이버지도 앱 설치돼있으면 그 앱으로,
+  // 없으면 모바일/PC 웹으로 자연스럽게 연결됨(map.naver.com이 앱 유니버설링크 등록돼있어
+  // 커스텀 스킴(nmap://) 없이 이 URL 하나로 앱/웹 둘 다 커버됨).
+  function naverMapUrl(query){
+    return 'https://map.naver.com/p/search/' + encodeURIComponent(query.trim());
+  }
+
   function sparkPoints(pts){
     const vals = pts.map(p=>p[1]);
     const min = Math.min(...vals), max = Math.max(...vals);
@@ -362186,6 +362196,7 @@
     document.getElementById('locLabel').textContent = meta ? meta.label : code;
 
     document.getElementById('leaderName').textContent = leaderPrice.name;
+    document.getElementById('mapLinkDash').href = naverMapUrl(`${meta ? meta.label : ''} ${leaderPrice.name}`);
     document.getElementById('leaderMeta').textContent = leaderPrice.meta;
     document.getElementById('leaderPrice').textContent = fmtEok(leaderPrice.current);
     document.getElementById('leaderLegendName').textContent = leaderPrice.name;
@@ -362389,6 +362400,12 @@
     document.getElementById('compareUnitName2').textContent = '● ' + u.name;
     document.getElementById('comparePrice').textContent = fmtEok(u.currentPrice);
     document.getElementById('compareSummary').textContent = `현재 갭 ${u.gap} · ${syncCount}개 국면 동조 (판정가능 ${judgable}개 중)`;
+    {
+      const regionMeta = pipelineData.regions.find(r=>r.code===currentRegionCode);
+      const regionLabel = regionMeta ? regionMeta.label : '';
+      document.getElementById('mapLinkLeader').href = naverMapUrl(`${regionLabel} ${leaderPrice.name}`);
+      document.getElementById('mapLinkUnit').href = naverMapUrl(`${regionLabel} ${u.name}`);
+    }
     renderChart('chart2', [{pts:leaderPts, color:'#26326B'}, {pts:u.pts, color:'#B9832A'}]);
 
     const badgeGrid = document.getElementById('badgeGrid');
