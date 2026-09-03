@@ -360,9 +360,11 @@
   .vs-row .who.lead{ color:var(--indigo); }
   .vs-row .who.sync{ color:var(--gold); }
   .vs-row .p{ font-family:'IBM Plex Mono', monospace; font-size:.85rem; font-weight:600; margin-left:auto; }
-  .map-link{ text-decoration:none; font-size:.9em; opacity:.7; line-height:1; }
+  .map-link{ display:inline-flex; color:var(--gold); opacity:.75; vertical-align:middle; }
   .map-link:hover, .map-link:active{ opacity:1; }
-  .complex-name .map-link{ margin-left:6px; vertical-align:middle; }
+  .map-link svg{ width:16px; height:16px; }
+  .complex-name .map-link{ margin-left:6px; }
+  .complex-name .map-link svg{ width:15px; height:15px; }
 
   .badge-grid{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
   .badge-row{
@@ -427,7 +429,7 @@
 
         <div class="card">
           <div class="leader-badge" id="leaderBadge" style="cursor:pointer;">대장단지 <span class="info-icon">ⓘ</span></div>
-          <div class="complex-name"><span id="leaderName">대치 SK뷰</span><a class="map-link" id="mapLinkDash" href="#" target="_blank" rel="noopener" aria-label="지도에서 보기">🗺️</a></div>
+          <div class="complex-name"><span id="leaderName">대치 SK뷰</span><a class="map-link" id="mapLinkDash" href="#" target="_blank" rel="noopener" aria-label="지도에서 보기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6.5-9 12-9 12s-9-5.5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></a></div>
           <div class="complex-meta" id="leaderMeta">1,631세대 · 2016년 준공 · 전용 84㎡ 기준</div>
 
           <div class="price-row">
