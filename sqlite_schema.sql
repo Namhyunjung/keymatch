@@ -90,7 +90,7 @@ CREATE TABLE sync_summary (
   sync_index            REAL NOT NULL,
   current_price_gap_10k INTEGER,
   updated_at            TEXT,
-  PRIMARY KEY (leader_complex_id, candidate_complex_id)
+  PRIMARY KEY (leader_complex_id, candidate_complex_id, pyeong_group_id)
 );
 
 CREATE TABLE pipeline_runs (

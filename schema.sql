@@ -125,7 +125,7 @@ CREATE TABLE sync_summary (
   sync_index            DECIMAL(4,3) NOT NULL,   -- sync_count / judgable_count
   current_price_gap_10k INT,                      -- 대장단지 대비 현재가 갭
   updated_at            TIMESTAMP DEFAULT now(),
-  PRIMARY KEY (leader_complex_id, candidate_complex_id)
+  PRIMARY KEY (leader_complex_id, candidate_complex_id, pyeong_group_id)
 );
 CREATE INDEX idx_sync_summary_region ON sync_summary(region_code, pyeong_group_id, sync_index DESC);
 
