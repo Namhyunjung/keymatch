@@ -1256,7 +1256,7 @@ def extract(mode: str) -> pd.DataFrame:
 # ------------------------------------------------------------
 # TRANSFORM + LOAD
 # ------------------------------------------------------------
-def transform_and_load(conn, raw: pd.DataFrame) -> int:
+def transform_and_load(conn, raw: pd.DataFrame, skip_households: bool = False) -> int:
     log.info("TRANSFORM 시작")
     cleaned = clean_transactions(raw)
 
@@ -1275,7 +1275,11 @@ def transform_and_load(conn, raw: pd.DataFrame) -> int:
     resolved_count = 0
     skipped_apt_seqs = set()
 
-    for apt_seq, group in cleaned.groupby('apt_seq'):
+    # 단지당 세대수 조회가 API 왕복이라 첫 백필 달(전체 단지 수천 개)은 이 루프만 몇 시간 걸림.
+    # 예전엔 conn.commit()을 루프 다 끝나고 한 번만 해서, 도중에 죽으면(2026-09-05 실제로 killed
+    # 당함) 이미 조회한 세대수까지 통째로 날아가 재실행 시 처음부터 다시 조회했음 — 주기적으로
+    # 커밋해서 중간에 죽어도 이미 매칭한 단지는 already_matched로 재사용되게 함.
+    for i, (apt_seq, group) in enumerate(cleaned.groupby('apt_seq'), 1):
         name = group['complex_name'].iloc[0]
         by = group['built_year'].dropna()
         built_year = int(by.iloc[0]) if not by.empty else None
@@ -1293,6 +1297,8 @@ def transform_and_load(conn, raw: pd.DataFrame) -> int:
 
         if apt_seq in already_matched:
             households, danji_code, match_confidence = already_matched[apt_seq], None, None
+        elif skip_households:
+            households, danji_code, match_confidence = None, None, None
         else:
             households, danji_code, match_confidence = resolver.resolve(region_code, name, built_year)
             if households is not None:
@@ -1308,6 +1314,9 @@ def transform_and_load(conn, raw: pd.DataFrame) -> int:
                  match_confidence=COALESCE(complexes.match_confidence, EXCLUDED.match_confidence)""",
             (name, region_code, apt_seq, built_year, households, danji_code, match_confidence)
         )
+        if i % 200 == 0:
+            conn.commit()
+            log.info(f"세대수 매칭 진행 {i}/{len(cleaned['apt_seq'].unique())} — 새로 매칭 {resolved_count}건")
     conn.commit()
     log.info(f"세대수 매칭 — 이번에 새로 매칭 {resolved_count}건, 기존 캐시 {len(already_matched)}건")
     if skipped_apt_seqs:
