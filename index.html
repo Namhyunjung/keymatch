@@ -13,6 +13,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="키맞추기 — 대장단지 따라가기">
 <meta name="twitter:description" content="국면별 실거래가 동조 분석으로 찾는 저평가 단지">
+<!-- AdSense 사이트 소유권 확인/심사용 — 전 페이지 공통 삽입 -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6787031668536428" crossorigin="anonymous"></script>
 <meta name="twitter:image" content="https://keymatch-steel.vercel.app/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -1022022,6 +1022024,20 @@
         </div>
       </div>
 
+      <!-- ===================== AD INTERSTITIAL MODAL ===================== -->
+      <!-- "동조단지 보기" 버튼 클릭 시 이동 전에 뜸. AdSense 계정 승인 나면
+           adsenseClient/adsenseSlot 값만 채우면 자동으로 실광고로 전환됨 (검색: ADSENSE_CLIENT). -->
+      <div class="modal-overlay" id="adModal">
+        <div class="modal-sheet">
+          <div class="modal-handle"></div>
+          <div class="modal-title">잠시만요</div>
+          <div id="adSlotBox" style="min-height:250px; display:flex; align-items:center; justify-content:center; background:var(--surface-alt, #f4f4f6); border-radius:12px; color:var(--ink-faint); font-size:13px; margin-bottom:14px;">
+            광고 준비 중
+          </div>
+          <button class="modal-close" id="adModalClose">계속 보기</button>
+        </div>
+      </div>
+
       <!-- ===================== REGION PICKER MODAL ===================== -->
       <div class="modal-overlay" id="regionModal">
         <div class="modal-sheet">
@@ -1022055,7 +1022071,36 @@
   document.querySelectorAll('.tab').forEach(tab=>{
     tab.addEventListener('click', ()=> goToScreen(tab.dataset.target));
   });
-  document.getElementById('ctaToList').addEventListener('click', ()=> goToScreen('list'));
+  // ---------- 동조단지 보기 전 광고 인터스티셜 ----------
+  // adsbygoogle.js는 <head>에서 사이트 전체에 이미 로드해둠(애드센스 심사/소유권 확인용).
+  // ADSENSE_SLOT은 애드센스에서 광고 단위 만들면 나오는 슬롯 ID — 승인 후 채우면 됨.
+  // 비어있는 동안은 "광고 준비 중" 자리표시만 보임.
+  const ADSENSE_CLIENT = 'ca-pub-6787031668536428';
+  const ADSENSE_SLOT = '';  // 예: '1234567890' — 애드센스에서 광고 단위 생성 후 채우기
+  let adsenseLoaded = false;
+
+  function showAdModal(){
+    if(ADSENSE_SLOT && !adsenseLoaded){
+      adsenseLoaded = true;
+      document.getElementById('adSlotBox').innerHTML =
+        `<ins class="adsbygoogle" style="display:block;width:100%;min-height:250px"
+              data-ad-client="${ADSENSE_CLIENT}" data-ad-slot="${ADSENSE_SLOT}"
+              data-ad-format="auto" data-full-width-responsive="true"></ins>`;
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    }
+    document.getElementById('adModal').classList.add('show');
+  }
+  document.getElementById('ctaToList').addEventListener('click', showAdModal);
+  document.getElementById('adModalClose').addEventListener('click', ()=>{
+    document.getElementById('adModal').classList.remove('show');
+    goToScreen('list');
+  });
+  document.getElementById('adModal').addEventListener('click', (e)=>{
+    if(e.target.id==='adModal'){
+      e.target.classList.remove('show');
+      goToScreen('list');
+    }
+  });
   document.getElementById('backToDashboard').addEventListener('click', ()=> goToScreen('dashboard'));
   document.getElementById('backToList').addEventListener('click', ()=> goToScreen('list'));
 
