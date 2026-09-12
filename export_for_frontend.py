@@ -175,8 +175,11 @@ def export_all(default_region_code: str = DEFAULT_REGION_CODE) -> dict:
             leader_id, summaries, pyeong_labels.get(pg_id, '?'),
             complex_info, pg_monthly, pg_regime_returns
         )
-        if not region_data['units']:
-            continue  # 동조 필터 통과한 단지가 하나도 없으면 프론트에 노출할 실익 없음
+        # 동조 필터 통과한 단지가 0개여도(대장단지는 뽑혔는데 후보가 전부 기준 미달)
+        # 그대로 내려보냄 — 프론트에서 지역 자체가 안 보이면 "서비스 오류"로 오해하기 쉬움.
+        # 대신 units가 비어있으니 프론트가 "동조단지 없음" 안내를 보여줌(unitList 렌더 로직).
+        # 애초에 그 동에 단지가 1개뿐이거나 아예 없는 경우는 leaders 테이블에 안 들어오므로
+        # 이 루프까지 오지도 않음 — 그런 동은 여전히 화면에 노출 안 됨(보여줄 데이터 자체가 없음).
         data.setdefault(region_code, {})[str(pg_id)] = region_data
         region_codes_used.add(region_code)
         pg_ids_used.add(pg_id)

@@ -124,15 +124,32 @@ class AptTradeConnector:
     # ------------------------------------------------------------
     # 3. 여러 지역 × 여러 월 일괄 수집
     # ------------------------------------------------------------
-    def fetch_bulk(self, lawd_cd_list: list[str], deal_ymd_list: list[str]) -> pd.DataFrame:
+    def fetch_bulk(
+        self,
+        lawd_cd_list: list[str],
+        deal_ymd_list: list[str],
+        circuit_breaker_threshold: int = 5,
+    ) -> pd.DataFrame:
+        """지역×월 조합을 순회하며 수집. 연속 circuit_breaker_threshold회 실패하면
+        API/네트워크 자체가 죽은 걸로 보고 즉시 중단 — 2026-09-09 실행에서 서버가
+        completely 응답 없던 날, 이 breaker 없이 수백 개 조합을 끝까지 재시도하느라
+        3시간 걸리고서야 실패한 사고 있었음(연속실패 x37초/조합)."""
         frames = []
+        consecutive_failures = 0
         for lawd_cd in lawd_cd_list:
             for deal_ymd in deal_ymd_list:
                 try:
                     df = self.fetch_region_month(lawd_cd, deal_ymd)
                     frames.append(df)
+                    consecutive_failures = 0
                 except AptTradeAPIError as e:
                     print(f"[WARN] 수집 실패, 건너뜀: {e}")
+                    consecutive_failures += 1
+                    if consecutive_failures >= circuit_breaker_threshold:
+                        raise AptTradeAPIError(
+                            f"연속 {consecutive_failures}회 실패 — API/네트워크 장애로 보고 중단 "
+                            f"(마지막 조합 {lawd_cd}/{deal_ymd}): {e}"
+                        )
         return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
@@ -299,3 +316,20 @@ if __name__ == '__main__':
     assert excluded == 1, f"기준가 대비 -18% 직거래는 배제돼야 하는데 배제 건수={excluded}"
     assert outlier_monthly.iloc[0]['rep_price_10k'] == 282000, "배제 후 대표가(최고가)는 28.2억이어야 함"
     print(f"\n이상치 배제 자가검증 통과 — 5건 중 {excluded}건 배제, 대표가 {outlier_monthly.iloc[0]['rep_price_10k']}만원")
+
+    # ---- 서킷브레이커 자가검증: 연속 실패가 threshold에 닿으면 나머지 조합 안 돌고 중단 ----
+    conn = AptTradeConnector(service_key="dummy")
+    call_count = [0]
+
+    def _always_fail(lawd_cd, deal_ymd):
+        call_count[0] += 1
+        raise AptTradeAPIError("simulated failure")
+
+    conn.fetch_region_month = _always_fail
+    try:
+        conn.fetch_bulk(lawd_cd_list=[f"{i:05d}" for i in range(100)], deal_ymd_list=["202601"], circuit_breaker_threshold=5)
+        raise AssertionError("서킷브레이커가 안 걸리고 끝까지 돎")
+    except AptTradeAPIError as e:
+        assert call_count[0] == 5, f"threshold=5인데 {call_count[0]}번 호출하고 멈춤"
+        assert "연속 5회 실패" in str(e), f"중단 사유 메시지 누락: {e}"
+    print(f"서킷브레이커 자가검증 통과 — 100개 조합 중 {call_count[0]}번만 호출하고 중단")
