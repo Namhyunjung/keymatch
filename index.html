@@ -267,12 +267,19 @@
   }
   .modal-overlay.show{ display:flex; }
   .modal-sheet{
+    position:relative;
     width:100%; background:var(--paper);
     border-radius:22px 22px 0 0;
     padding:20px 20px 24px;
     animation:slideup .2s ease;
     max-height:74%;
     overflow-y:auto;
+  }
+  .modal-close-x{
+    position:absolute; top:8px; right:8px; width:40px; height:40px;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none; font-size:1.3rem; line-height:1;
+    color:var(--ink-faint); cursor:pointer;
   }
   @keyframes slideup{ from{ transform:translateY(16px); opacity:0;} to{ transform:translateY(0); opacity:1;} }
   .modal-handle{ width:36px; height:4px; background:var(--line); border-radius:99px; margin:0 auto 14px; }
@@ -584,6 +591,7 @@
       <!-- ===================== REGION PICKER MODAL ===================== -->
       <div class="modal-overlay" id="regionModal">
         <div class="modal-sheet">
+          <button class="modal-close-x" id="regionModalClose" aria-label="닫기">✕</button>
           <div class="modal-handle"></div>
           <div class="modal-title" style="margin-bottom:14px;">지역 선택</div>
           <div class="region-field">
@@ -599,7 +607,6 @@
             <select id="dongSelect" disabled></select>
             <div class="region-hint">읍/면/동까지 고르면 바로 적용돼요</div>
           </div>
-          <button class="modal-close" id="regionModalClose">취소</button>
         </div>
       </div>
 
