@@ -145,6 +145,7 @@
   }
   .tab.active .num{ color:var(--gold); }
   .tab.active .lbl{ color:#fff; }
+  .tab.disabled{ opacity:.45; cursor:not-allowed; }
 
   /* ---------- Phone frame ---------- */
   .frame{
@@ -621,7 +622,14 @@
     window.scrollTo(0, 0);  // 이전 화면 스크롤 위치가 남아서 새 화면이 하단부터 보이는 문제 방지
   }
   document.querySelectorAll('.tab').forEach(tab=>{
-    tab.addEventListener('click', ()=> goToScreen(tab.dataset.target));
+    tab.addEventListener('click', ()=>{
+      // 동조단지 0개인 지역이면 03 단지비교는 비교할 대상이 없어서 renderCompare()가
+      // 한 번도 안 돎 — 그 상태로 탭만 눌러 들어가면 예전에 다른 지역 보다가 남은
+      // 화면(대장단지 이름은 새 지역인데 비교 상대는 이전 지역 단지인 뒤죽박죽)이
+      // 그대로 보였음(2026-09-22, 사용자 리포트: 홍은동인데 대치동 단지가 비교화면에 뜸).
+      if(tab.dataset.target === 'compare' && !units.length) return;
+      goToScreen(tab.dataset.target);
+    });
   });
   // ---------- 동조단지 보기 전 광고 인터스티셜 ----------
   // adsbygoogle.js는 <head>에서 사이트 전체에 이미 로드해둠(애드센스 심사/소유권 확인용).
@@ -836,6 +844,7 @@
     renderUnitList();
     renderChart('chart1', [{pts:leaderPts, color:'#26326B'}]);
     if(units.length) renderCompare();  // 동조단지 0개면 비교할 대상이 없어서 스킵
+    document.querySelector('.tab[data-target="compare"]').classList.toggle('disabled', !units.length);
   }
 
   // 시/도 > 시/군/구 > 읍/면/동 3단 선택 — 지역이 늘면서 플랫 드롭다운은 스크롤이
