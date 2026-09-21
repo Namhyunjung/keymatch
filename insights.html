@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insights | 키맞추기</title>
+<meta name="description" content="키맞추기가 실거래가 데이터로 뽑아낸 지역별 동조/저평가 분석 노트예요.">
+<link rel="canonical" href="https://keymatch-steel.vercel.app/insights.html">
+<meta name="google-adsense-account" content="ca-pub-6787031668536428">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6787031668536428"
+     crossorigin="anonymous"></script>
+<style>
+  :root{ --bg:#EEF1F6; --indigo:#26326B; --text:#1c2140; --muted:#666; }
+  *{ box-sizing:border-box; }
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'Pretendard',-apple-system,sans-serif;
+    max-width:640px; margin:0 auto; padding:40px 20px 80px;
+    line-height:1.7; font-size:15px;
+  }
+  h1{ font-size:1.4rem; margin-bottom:4px; }
+  .updated{ color:var(--muted); font-size:.85rem; margin-bottom:32px; }
+  a{ color:var(--indigo); }
+  .back{ display:inline-block; margin-bottom:24px; color:var(--muted); text-decoration:none; font-size:.85rem; }
+  .post-list{ list-style:none; padding:0; margin:0; }
+  .post-item{ padding:16px 0; border-bottom:1px solid #dfe3ec; }
+  .post-item a{ display:block; font-size:1.02rem; font-weight:700; color:var(--text); text-decoration:none; margin-bottom:4px; }
+  .post-item a:hover{ color:var(--indigo); }
+  .post-date{ font-size:.78rem; color:var(--muted); font-family:'IBM Plex Mono', monospace; }
+  .post-summary{ font-size:.88rem; color:var(--muted); margin-top:4px; }
+  .empty{ padding:40px 4px; text-align:center; color:var(--muted); font-size:.9rem; }
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">‹ 키맞추기로 돌아가기</a>
+  <h1>Insights</h1>
+  <div class="updated">실거래가 데이터로 뽑아낸 지역별 동조/저평가 분석 노트예요</div>
+
+  <!--
+    새 글 추가하는 법:
+    1. insights/_template.html을 복사해서 insights/<slug>.html로 저장하고 본문 채우기
+    2. 아래 posts 배열 맨 앞에 {slug, title, date, summary} 한 줄 추가
+    3. sitemap.xml에도 insights/<slug>.html 항목 추가 (about.html 항목 형태 참고)
+    DB나 빌드 스텝 없이 손으로 관리하는 목록이라, 위 3단계를 매번 그대로 반복하면 됨.
+  -->
+  <ul class="post-list" id="postList"></ul>
+  <div class="empty" id="emptyState" hidden>아직 글이 없어요. 곧 첫 글을 올릴게요.</div>
+
+  <script>
+    const posts = [
+      // { slug: 'daechi-2025-06', title: '대치동 대장단지, 회복기 들어 동조단지는 몇 곳?', date: '2026-09-22', summary: '재규제기 진입 후 대치동 동조단지 변화를 살펴봤어요.' },
+    ];
+
+    const listEl = document.getElementById('postList');
+    const emptyEl = document.getElementById('emptyState');
+    if(posts.length === 0){
+      emptyEl.hidden = false;
+    } else {
+      listEl.innerHTML = posts.map(p => `
+        <li class="post-item">
+          <a href="insights/${p.slug}.html">${p.title}</a>
+          <div class="post-date">${p.date}</div>
+          <div class="post-summary">${p.summary}</div>
+        </li>`).join('');
+    }
+  </script>
+</body>
+</html>
