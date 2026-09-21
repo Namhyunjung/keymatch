@@ -296,6 +296,7 @@
     background:var(--paper); color:var(--ink); font-size:.88rem; font-family:'Pretendard', sans-serif;
   }
   .region-field select:disabled{ color:var(--ink-faint); }
+  .region-hint{ font-size:.72rem; color:var(--ink-faint); margin-top:5px; }
 
   .cta{
     width:100%;
@@ -596,8 +597,9 @@
           <div class="region-field">
             <label>읍/면/동</label>
             <select id="dongSelect" disabled></select>
+            <div class="region-hint">읍/면/동까지 고르면 바로 적용돼요</div>
           </div>
-          <button class="modal-close" id="regionModalClose">닫기</button>
+          <button class="modal-close" id="regionModalClose">취소</button>
         </div>
       </div>
 
