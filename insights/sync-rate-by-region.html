@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>대장단지 따라가기, 동네마다 얼마나 통할까 | 키맞추기 Insights</title>
+<meta name="description" content="전국 실거래가로 대장단지-동조단지 통과율을 동네별로 뽑아봤더니, 신도시형 택지지구는 70~80%대인데 강남3구는 오히려 10% 안팎이었어요.">
+<link rel="canonical" href="https://keymatch-steel.vercel.app/insights/sync-rate-by-region.html">
+<meta name="google-adsense-account" content="ca-pub-6787031668536428">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6787031668536428"
+     crossorigin="anonymous"></script>
+<style>
+  :root{ --bg:#EEF1F6; --indigo:#26326B; --text:#1c2140; --muted:#666; }
+  *{ box-sizing:border-box; }
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'Pretendard',-apple-system,sans-serif;
+    max-width:640px; margin:0 auto; padding:40px 20px 80px;
+    line-height:1.7; font-size:15px;
+  }
+  h1{ font-size:1.3rem; margin-bottom:4px; }
+  .meta{ color:var(--muted); font-size:.85rem; margin-bottom:32px; font-family:'IBM Plex Mono', monospace; }
+  h2{ font-size:1.02rem; margin-top:28px; margin-bottom:8px; color:var(--indigo); }
+  p, li{ color:var(--text); }
+  a{ color:var(--indigo); }
+  b{ color:var(--indigo); }
+  .back{ display:inline-block; margin-bottom:24px; color:var(--muted); text-decoration:none; font-size:.85rem; }
+  table{ width:100%; border-collapse:collapse; margin:12px 0; font-size:.88rem; }
+  th, td{ text-align:left; padding:7px 8px; border-bottom:1px solid #dfe3ec; }
+  th{ color:var(--muted); font-weight:600; font-size:.78rem; }
+  td.num{ text-align:right; font-family:'IBM Plex Mono', monospace; }
+  .callout{ background:#fff; border:1px solid #dfe3ec; border-radius:12px; padding:14px 16px; margin:16px 0; font-size:.9rem; }
+  .note{ font-size:.82rem; color:var(--muted); }
+</style>
+</head>
+<body>
+  <a class="back" href="../insights.html">‹ Insights 목록으로</a>
+  <h1>대장단지 따라가기, 동네마다 얼마나 통할까</h1>
+  <div class="meta">2026-09-22</div>
+
+  <p>키맞추기는 대장단지와 같이 움직이는 '동조단지'를 찾는 서비스예요. 그런데 전국 데이터를 모아 동네별로 나눠보니, 이 '따라가기' 패턴이 유독 잘 통하는 동네가 있고 거의 안 통하는 동네도 있었어요. 표본이 있는 동(후보 단지 20개 이상) 기준으로 살펴봤어요.</p>
+
+  <h2>전체 평균은 22.3%</h2>
+  <p>대장단지 후보로 검토된 단지 15,167개 중, 판정 가능한 국면이 3개 이상이면서 그중 2개 이상 동조한 — 즉 동조단지 조건을 통과한 단지는 3,375개였어요. 비율로는 <b>22.3%</b>예요. 대부분의 단지는 대장단지와 따로 움직인다는 뜻이에요.</p>
+
+  <h2>신도시형 택지지구는 70~80%대</h2>
+  <p>그런데 동네별로 쪼개보면 편차가 커요. 통과율이 가장 높았던 동네들은 대부분 계획적으로 조성된 대단지 택지지구였어요.</p>
+  <table>
+    <tr><th>지역</th><th class="num">통과율</th><th class="num">통과/표본</th></tr>
+    <tr><td>경기 용인시 수지구 상현동</td><td class="num">83%</td><td class="num">25/30</td></tr>
+    <tr><td>경기 용인시 수지구 풍덕천동</td><td class="num">76%</td><td class="num">26/34</td></tr>
+    <tr><td>경기 수원시 영통구 영통동</td><td class="num">73%</td><td class="num">24/33</td></tr>
+    <tr><td>경기 화성시 동탄구 청계동</td><td class="num">73%</td><td class="num">16/22</td></tr>
+    <tr><td>인천 부평구 삼산동</td><td class="num">71%</td><td class="num">17/24</td></tr>
+    <tr><td>서울 강동구 강일동</td><td class="num">70%</td><td class="num">14/20</td></tr>
+  </table>
+  <p>이런 동네는 비슷한 시기에 비슷한 규모로 지어진 단지가 몰려 있는 경우가 많아요. 단지 간 개별 편차(브랜드, 학군, 재건축 이슈 등)가 상대적으로 작으면, 대장단지가 움직일 때 나머지도 비슷한 폭으로 같이 움직일 가능성이 높아지는 것으로 보여요.</p>
+
+  <h2>반대로 강남3구는 9~10%대</h2>
+  <p>제일 뜻밖이었던 부분이에요. 흔히 "부동산 시장을 가장 먼저, 가장 크게 반영한다"고 하는 강남3구가 오히려 전체 평균(22.3%)보다 한참 낮았어요.</p>
+  <table>
+    <tr><th>지역</th><th class="num">통과율</th><th class="num">통과/표본</th></tr>
+    <tr><td>강남구</td><td class="num">10%</td><td class="num">34/339</td></tr>
+    <tr><td>송파구</td><td class="num">10%</td><td class="num">33/340</td></tr>
+    <tr><td>서초구</td><td class="num">9%</td><td class="num">31/346</td></tr>
+  </table>
+  <p>통과율이 완전히 0%였던 동네(표본 20개 이상)에도 <b>강남구 청담동</b>이 들어 있었어요 — 표본 31개 중 동조단지가 단 하나도 없었어요. 함께 0%였던 곳은 서울 영등포구 대림동, 은평구 구산동·증산동, 경기 부천시 심곡동·원종동이었어요.</p>
+  <div class="callout">
+    강남3구는 재건축 단계, 준공년도, 브랜드가 단지마다 크게 갈리는 동네예요. 대장단지 하나의 등락률로 다른 단지들의 움직임을 설명하기엔 개별 단지 사정이 너무 다르다는 뜻으로 해석해볼 수 있어요 — 다만 이건 이 데이터에서 관찰되는 경향이고, 원인을 단정하는 건 아니에요.
+  </div>
+
+  <h2>그래서 뭘 알 수 있나요</h2>
+  <p>"동조단지가 없다/적다" = "그 동네가 저평가됐다"는 뜻이 아니에요. 오히려 그 동네 자체가 대장단지 하나로 설명되지 않는, 단지마다 사정이 다른 동네일 수 있다는 뜻이에요. 반대로 통과율이 높은 신도시형 동네는 대장단지 지수가 그 동네 시세 전반의 신호로 좀 더 잘 기능한다고 볼 수 있어요.</p>
+  <p class="note">판정 기준(동조단지 게이트)에 대한 자세한 설명은 <a href="../about.html">About 페이지</a>에서 확인할 수 있어요. 이 글의 수치는 표본이 20개 미만인 동은 노이즈가 클 수 있어 제외했어요.</p>
+
+  <p><a href="../index.html">키맞추기에서 우리 동네 확인하기 →</a></p>
+</body>
+</html>
