@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>소개 | 키맞추기</title>
+<meta name="description" content="키맞추기가 대장단지와 동조단지를 어떻게 판정하는지 설명해요 — 정책 국면 구분, 동조 판정 기준, 이상치 처리 방식.">
+<link rel="canonical" href="https://keymatch-steel.vercel.app/about.html">
+<meta name="google-adsense-account" content="ca-pub-6787031668536428">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6787031668536428"
+     crossorigin="anonymous"></script>
+<style>
+  :root{ --bg:#EEF1F6; --indigo:#26326B; --text:#1c2140; --muted:#666; }
+  *{ box-sizing:border-box; }
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'Pretendard',-apple-system,sans-serif;
+    max-width:640px; margin:0 auto; padding:40px 20px 80px;
+    line-height:1.7; font-size:15px;
+  }
+  h1{ font-size:1.4rem; margin-bottom:4px; }
+  .updated{ color:var(--muted); font-size:.85rem; margin-bottom:32px; }
+  h2{ font-size:1.05rem; margin-top:32px; margin-bottom:8px; color:var(--indigo); }
+  p, li{ color:var(--text); }
+  ul{ padding-left:20px; }
+  a{ color:var(--indigo); }
+  .back{ display:inline-block; margin-bottom:24px; color:var(--muted); text-decoration:none; font-size:.85rem; }
+  b{ color:var(--indigo); }
+  table{ width:100%; border-collapse:collapse; margin:12px 0; font-size:.9rem; }
+  th, td{ text-align:left; padding:7px 8px; border-bottom:1px solid #dfe3ec; }
+  th{ color:var(--muted); font-weight:600; font-size:.8rem; }
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">‹ 키맞추기로 돌아가기</a>
+  <h1>키맞추기 — 대장단지 따라가기</h1>
+  <div class="updated">이 페이지는 키맞추기가 데이터를 어떻게 다루는지 설명해요</div>
+
+  <h2>왜 키맞추기예요?</h2>
+  <p>부동산 시장에서 '대장단지'는 그 지역 가격의 방향을 먼저 보여주는 지표 역할을 해요. 대장단지가 움직이면, 같은 생활권의 다른 단지들도 시차를 두고 따라 움직이는 경향이 있어요. 키맞추기는 이 '동조' 관계를 실거래가 데이터로 검증하고, 아직 따라 움직이지 않은 — 즉 저평가된 — 단지를 찾아드려요.</p>
+
+  <h2>대장단지는 어떻게 정해지나요?</h2>
+  <p><b>최근 시세가 가장 높은 단지</b>가 대장단지는 아니에요. 규제강화기·급등기·하락기·회복기·재규제기, 다섯 개 국면마다 평당가 순위를 매기고 <b>국면 안에서도 여러 시점(분기별)의 순위를 평균</b> 내서 반짝 1등에 흔들리지 않게 해요.</p>
+  <p>그렇게 국면별로 상위 10% 안에 든 횟수가 가장 많은 단지, 즉 <b>여러 시기에 걸쳐 꾸준히 상위권을 지킨 단지</b>가 대장단지가 돼요. 최근 한 시점에 가격이 역전됐다고 바로 바뀌지 않아요.</p>
+
+  <h2>정책 국면으로 나누는 이유</h2>
+  <p>같은 기간이라도 규제 강도에 따라 가격이 움직이는 방식이 완전히 달라져요. 그래서 키맞추기는 전체 기간을 하나로 보지 않고, <b>규제강화기·급등기·하락기·회복기·재규제기</b> 다섯 개 국면으로 나눠서 각 국면 안에서만 가격 흐름을 비교해요. 국면이 다른 시기를 섞어서 비교하면 '규제 때문에 빠진 건지, 실제로 덜 오른 건지'를 구분할 수 없기 때문이에요.</p>
+  <table>
+    <tr><th>국면</th><th>기간</th></tr>
+    <tr><td>규제강화기</td><td>2017.05 – 2019.12</td></tr>
+    <tr><td>급등기</td><td>2020.01 – 2022.04</td></tr>
+    <tr><td>하락기</td><td>2022.05 – 2023.12</td></tr>
+    <tr><td>회복기</td><td>2024.01 – 2025.06</td></tr>
+    <tr><td>재규제기</td><td>2025.07 – 진행중</td></tr>
+  </table>
+  <p style="font-size:.82rem; color:var(--muted);">각 국면의 구체적인 정책·규제 배경은 대시보드 그래프에서 국면 구간을 누르면 볼 수 있어요.</p>
+
+  <h2>동조단지는 어떻게 판정하나요?</h2>
+  <p>대장단지와 같은 국면에서 (1) 가격 방향이 같고, (2) 상승·하락폭 차이가 일정 범위 안에 들어오면 그 국면은 '동조'로 판정해요. <b>판정 가능한 국면이 3개 이상이면서 그중 2개 이상 동조한 단지</b>만 동조단지 목록에 올라가요 — 그중에서도 다섯 국면 전부 동조했으면 <b>완전동조</b>, 그보다 적게 동조했으면 <b>부분동조</b>로 나눠서 보여드려요.</p>
+  <p>단지 목록에 같이 뜨는 '갭'은 국면별 동조 여부와는 다른 지표예요. 대장단지와 지금 이 순간의 실제 가격 차이(억원)를 그대로 보여주는 값이에요. 국면별로는 대장단지와 같이 움직여 왔는데(동조) 절대가격은 아직 벌어져 있는 단지가, 키맞추기가 저평가 후보로 주목하는 지점이에요.</p>
+
+  <h2>평형을 섞지 않는 이유</h2>
+  <p>같은 단지라도 24평과 84평은 사실상 다른 시장이에요. 평형이 다른 단지를 같이 놓고 비교하면 왜곡된 결론이 나와요. 그래서 키맞추기의 모든 비교는 반드시 '단지 × 평형' 단위로만 이뤄져요.</p>
+
+  <h2>거래량이 적은 달은 어떻게 처리하나요?</h2>
+  <p>거래가 적은 달엔 증여성 저가 직거래 한두 건이 그 달 시세를 크게 왜곡시킬 수 있어요. 그래서 키맞추기는 각 거래를 그 단지의 최근 시세 흐름과 비교해서, 시세보다 지나치게 낮은 거래는 대표가 계산에서 먼저 제외해요. 그렇게 남은 거래로 그 달 <b>대표가(최고가)</b>를 구하고, 한 국면 전체에서 거래가 너무 적었던 단지는 그 국면을 <b>판정불가</b>로 처리해서 동조 여부 판단에 섞이지 않게 해요.</p>
+
+  <h2>데이터 출처</h2>
+  <p>국토교통부 아파트매매 실거래자료(<a href="https://www.data.go.kr" target="_blank" rel="noopener">data.go.kr</a>)를 기반으로 해요.</p>
+</body>
+</html>
