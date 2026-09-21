@@ -13,10 +13,14 @@ batch_runner.py가 채운 Supabase(Postgres)를 읽어서, keymatch.html의 지�
 }
 지역×평형 조합 중 동조단지가 하나라도 있는 조합만 담김 — 프론트는 지역 고른 다음
 data[region_code]의 키(있는 평형)만 선택지로 보여주면 됨.
+
+이 결과를 write_split()이 data/index.json(지역·평형 목록) + data/r/{지역코드}/{평형id}.json
+(조합별 페이로드)으로 쪼개서 씀. 프론트는 index.json 하나와 지금 보는 조합 파일만 받음.
 """
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -213,17 +217,68 @@ def export_all(default_region_code: str = DEFAULT_REGION_CODE) -> dict:
     }
 
 
+DATA_DIR = Path(__file__).parent / 'data'
+
+
+def write_split(result: dict, data_dir: Path = DATA_DIR) -> tuple[int, int]:
+    """export_all() 결과를 index + (지역×평형)별 파일로 쪼개 저장한다.
+
+    예전엔 이 전체를 index.html 안 <script id="pipelineData">에 통째로 구워넣었는데
+    (25MB), 첫 화면에 필요한 건 그중 한 조합(중앙값 1.7KB)뿐이라 문서 응답만 무겁고
+    크롤러 렌더링 예산도 잡아먹었음. 계산 결과는 그대로, 전달 방식만 쪼갬.
+    """
+    if data_dir.exists():
+        shutil.rmtree(data_dir)  # 사라진 지역/평형 조합의 낡은 파일이 남지 않게 통째로 다시 씀
+    (data_dir / 'r').mkdir(parents=True)
+
+    dump = lambda obj: json.dumps(obj, ensure_ascii=False, separators=(',', ':'))
+
+    files = 0
+    for region_code, pgs in result['data'].items():
+        region_dir = data_dir / 'r' / region_code
+        region_dir.mkdir()
+        for pg_id_str, payload in pgs.items():
+            (region_dir / f'{pg_id_str}.json').write_text(dump(payload), encoding='utf-8')
+            files += 1
+
+    index = {
+        'regions': result['regions'],
+        'pyeongGroups': result['pyeongGroups'],
+        'defaultRegion': result['defaultRegion'],
+        'defaultPyeongGroup': result['defaultPyeongGroup'],
+        # 지역별로 실제 있는 평형 id — 프론트가 평형 칩을 그리려면 조합 파일을 받기 전에
+        # 알아야 함. 값(payload)은 빼고 키만 담아서 index는 수십 KB 수준으로 유지.
+        'available': {rc: sorted(pgs.keys(), key=int) for rc, pgs in result['data'].items()},
+    }
+    index_path = data_dir / 'index.json'
+    index_path.write_text(dump(index), encoding='utf-8')
+    return files, index_path.stat().st_size
+
+
+def verify_split(result: dict, data_dir: Path = DATA_DIR) -> None:
+    """쪼개서 쓴 파일을 도로 합치면 export_all() 결과와 값이 완전히 같은지 확인.
+    순수 전달 방식 리팩터링이라 수치가 1도 달라지면 안 됨."""
+    index = json.loads((data_dir / 'index.json').read_text(encoding='utf-8'))
+    for key in ('regions', 'pyeongGroups', 'defaultRegion', 'defaultPyeongGroup'):
+        assert index[key] == result[key], f'index 불일치: {key}'
+    rebuilt = {
+        rc: {pg: json.loads((data_dir / 'r' / rc / f'{pg}.json').read_text(encoding='utf-8'))
+             for pg in pgs}
+        for rc, pgs in index['available'].items()
+    }
+    assert rebuilt == result['data'], '조합 파일 내용이 export 결과와 다름'
+
+
 if __name__ == '__main__':
     import sys
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8')  # Windows cp949 콘솔 대응
 
     result = export_all()
-    out_path = Path(__file__).parent / 'frontend_data.json'
-    out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
-    combo_count = sum(len(pgs) for pgs in result['data'].values())
-    print(f"내보내기 완료: {out_path} — {len(result['regions'])}개 지역 × {len(result['pyeongGroups'])}개 평형 "
-          f"(조합 {combo_count}개)")
+    file_count, index_size = write_split(result)
+    verify_split(result)
+    print(f"내보내기 완료: {DATA_DIR} — {len(result['regions'])}개 지역 × {len(result['pyeongGroups'])}개 평형 "
+          f"(조합 파일 {file_count}개, index {index_size:,}바이트)")
     for r in result['regions']:
         for pg_id_str, d in result['data'][r['code']].items():
             label = next(p['label'] for p in result['pyeongGroups'] if str(p['id']) == pg_id_str)
