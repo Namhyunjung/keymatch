@@ -39,34 +39,32 @@
   <!--
     새 글 추가하는 법:
     1. insights/_template.html을 복사해서 insights/<slug>.html로 저장하고 본문 채우기
-    2. 아래 posts 배열 맨 앞에 {slug, title, date, summary} 한 줄 추가
+    2. 아래 <ul class="post-list"> 맨 위에 <li class="post-item"> 블록 하나 추가 (JS로 안 채움 —
+       애드센스 심사 크롤러가 JS 렌더링을 안 믿어서 빈 화면으로 긁혔던 적 있음, 2026-09-22)
     3. sitemap.xml에도 insights/<slug>.html 항목 추가 (about.html 항목 형태 참고)
     DB나 빌드 스텝 없이 손으로 관리하는 목록이라, 위 3단계를 매번 그대로 반복하면 됨.
   -->
-  <ul class="post-list" id="postList"></ul>
-  <div class="empty" id="emptyState" hidden>아직 글이 없어요. 곧 첫 글을 올릴게요.</div>
-
-  <script>
-    const posts = [
-      { slug: 'regime-divergence', title: '급등기엔 다 같이, 회복기엔 셋 중 하나는 반대로', date: '2026-09-22', summary: '국면마다 대장단지와 반대로 움직인 비율이 크게 달랐어요 — 급등기 1%, 회복기 31.5%.' },
-      { slug: 'one-regime-away', title: '국면 하나만 더 맞았으면 동조단지였을 단지들', date: '2026-09-22', summary: '판정 가능한 국면 중 딱 1개만 어긋나서 탈락한 1,113개 단지의 상위 사례예요.' },
-      { slug: 'why-not-synced', title: '동조단지가 없다고 저평가가 아닌 이유', date: '2026-09-22', summary: '탈락 사유의 88%는 안 맞아서가 아니라 거래가 적어서 판정 자체가 안 된 것이었어요.' },
-      { slug: 'sync-rate-by-region', title: '대장단지 따라가기, 동네마다 얼마나 통할까', date: '2026-09-22', summary: '신도시형 택지지구는 통과율 70~80%대인데, 강남3구는 오히려 10% 안팎이었어요.' },
-      // { slug: 'daechi-2025-06', title: '대치동 대장단지, 회복기 들어 동조단지는 몇 곳?', date: '2026-09-22', summary: '재규제기 진입 후 대치동 동조단지 변화를 살펴봤어요.' },
-    ];
-
-    const listEl = document.getElementById('postList');
-    const emptyEl = document.getElementById('emptyState');
-    if(posts.length === 0){
-      emptyEl.hidden = false;
-    } else {
-      listEl.innerHTML = posts.map(p => `
-        <li class="post-item">
-          <a href="insights/${p.slug}.html">${p.title}</a>
-          <div class="post-date">${p.date}</div>
-          <div class="post-summary">${p.summary}</div>
-        </li>`).join('');
-    }
-  </script>
+  <ul class="post-list" id="postList">
+    <li class="post-item">
+      <a href="insights/regime-divergence.html">급등기엔 다 같이, 회복기엔 셋 중 하나는 반대로</a>
+      <div class="post-date">2026-09-22</div>
+      <div class="post-summary">국면마다 대장단지와 반대로 움직인 비율이 크게 달랐어요 — 급등기 1%, 회복기 31.5%.</div>
+    </li>
+    <li class="post-item">
+      <a href="insights/one-regime-away.html">국면 하나만 더 맞았으면 동조단지였을 단지들</a>
+      <div class="post-date">2026-09-22</div>
+      <div class="post-summary">판정 가능한 국면 중 딱 1개만 어긋나서 탈락한 1,113개 단지의 상위 사례예요.</div>
+    </li>
+    <li class="post-item">
+      <a href="insights/why-not-synced.html">동조단지가 없다고 저평가가 아닌 이유</a>
+      <div class="post-date">2026-09-22</div>
+      <div class="post-summary">탈락 사유의 88%는 안 맞아서가 아니라 거래가 적어서 판정 자체가 안 된 것이었어요.</div>
+    </li>
+    <li class="post-item">
+      <a href="insights/sync-rate-by-region.html">대장단지 따라가기, 동네마다 얼마나 통할까</a>
+      <div class="post-date">2026-09-22</div>
+      <div class="post-summary">신도시형 택지지구는 통과율 70~80%대인데, 강남3구는 오히려 10% 안팎이었어요.</div>
+    </li>
+  </ul>
 </body>
 </html>

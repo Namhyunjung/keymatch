@@ -451,25 +451,25 @@
 
         <div class="card">
           <div class="leader-badge" id="leaderBadge" style="cursor:pointer;">대장단지 <span class="info-icon">ⓘ</span></div>
-          <div class="complex-name"><span id="leaderName">대치 SK뷰</span><a class="map-link" id="mapLinkDash" href="#" target="_blank" rel="noopener" aria-label="지도에서 보기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6.5-9 12-9 12s-9-5.5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></a></div>
-          <div class="complex-meta" id="leaderMeta">1,631세대 · 2016년 준공 · 전용 84㎡ 기준</div>
+          <div class="complex-name"><span id="leaderName">래미안대치팰리스</span><a class="map-link" id="mapLinkDash" href="https://map.naver.com/p/search/%EC%84%9C%EC%9A%B8%20%EA%B0%95%EB%82%A8%EA%B5%AC%20%EB%8C%80%EC%B9%98%EB%8F%99%20%EB%9E%98%EB%AF%B8%EC%95%88%EB%8C%80%EC%B9%98%ED%8C%B0%EB%A6%AC%EC%8A%A4" target="_blank" rel="noopener" aria-label="지도에서 보기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 6.5-9 12-9 12s-9-5.5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></a></div>
+          <div class="complex-meta" id="leaderMeta">1,608세대 · 2015년 준공 · 전용 84㎡ 기준</div>
 
           <div class="price-row">
-            <div class="price" id="leaderPrice">28.5억</div>
+            <div class="price" id="leaderPrice">44.0억</div>
             <div class="delta up" style="display:inline-flex;align-items:baseline;gap:3px;">
-              <span id="leaderDelta">+105.0%</span>
+              <span id="leaderDelta">+163.5%</span>
               <span class="info-icon" id="priceInfoTrigger" style="cursor:pointer;">ⓘ</span>
             </div>
           </div>
 
           <div class="chart-legend">
-            <span><span class="dot" style="background:var(--indigo)"></span><span id="leaderLegendName">대치 SK뷰</span> 실거래가 지수</span>
+            <span><span class="dot" style="background:var(--indigo)"></span><span id="leaderLegendName">래미안대치팰리스</span> 실거래가 지수</span>
           </div>
           <svg class="chart" id="chart1" viewBox="0 0 340 150"></svg>
           <div class="regime-labels" id="regimeLabels1"></div>
         </div>
 
-        <button class="cta" id="ctaToList">이 대장단지와 동조하는 단지 <span class="n" id="ctaCount">12개</span> 보기 →</button>
+        <button class="cta" id="ctaToList">이 대장단지와 동조하는 단지 <span class="n" id="ctaCount">9개</span> 보기 →</button>
       </div>
 
       <!-- ===================== SCREEN 2 : LIST ===================== -->
@@ -644,7 +644,13 @@
   let adsenseLoaded = false;
 
   function showAdModal(){
-    if(ADSENSE_SLOT && !adsenseLoaded){
+    // ADSENSE_SLOT 비어있는 동안(승인 전)은 빈 광고 자리 모달을 띄우지 않고 바로 다음 화면으로 감 —
+    // "콘텐츠 없이 이동 목적으로만 쓰이는 화면"으로 심사 거절 사유가 됐었음(2026-09-22).
+    if(!ADSENSE_SLOT){
+      goToScreen('list');
+      return;
+    }
+    if(!adsenseLoaded){
       adsenseLoaded = true;
       document.getElementById('adSlotBox').innerHTML =
         `<ins class="adsbygoogle" style="display:block;width:100%;min-height:250px"
