@@ -1602,6 +1602,16 @@ def recompute(conn):
                 log.info(f"[pg={pyeong_group_id}][{region_code}] 대장단지 판정 불가 — 국면 종료시점 데이터 없음, 스킵")
                 continue
 
+            # 거래 뜸한 단지는 그 시점 혼자 거래돼서 순위 1.0을 먹는 경우가 많음(특히 114㎡) —
+            # 이력 부족한 단지는 건너뛰고 기준 통과한 최상위 단지를 대장단지로. 없으면 이 지역 스킵.
+            ranking = ranking[
+                (ranking['stable_regimes'] >= params.leader_min_regimes)
+                & ranking['complex_id'].map(lambda cid: len(load_monthly(int(cid))) >= params.leader_min_months)
+            ]
+            if ranking.empty:
+                log.info(f"[pg={pyeong_group_id}][{region_code}] 대장단지 기준 미달(상위권 국면/거래 개월 부족) — 스킵")
+                continue
+
             leader_id = int(ranking.iloc[0]['complex_id'])
             stable_regimes = int(ranking.iloc[0]['stable_regimes'])
             leader_apt_seq, leader_name = next((c[1], c[2]) for c in region_complexes if c[0] == leader_id)

@@ -22,6 +22,8 @@ class AlgoParams:
     min_judgable: int = 3      # 최소 판정가능 국면 수
     min_sync_index: float = 0.75  # 최소 동조지수
     leader_top_pct: float = 0.10  # 대장단지 평당가 상위 %
+    leader_min_regimes: int = 2   # 대장단지 최소 상위권 국면 수
+    leader_min_months: int = 12   # 대장단지 최소 거래 개월 수
 
 
 @dataclass

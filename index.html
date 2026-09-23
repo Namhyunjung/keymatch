@@ -1078,7 +1078,8 @@
     const allVals = series.flatMap(s=>s.pts.map(p=>p[1]));
     const min=Math.min(...allVals), max=Math.max(...allVals);
     const x = t => padL + t*(W-padL-padR);
-    const y = v => padT + (1-(v-min)/(max-min))*(H-padT-padB);
+    // 거래가 1개월뿐인 단지(주로 114㎡)는 max===min이라 0으로 나눠 NaN 좌표가 됨 — 가운데 선으로 둠
+    const y = v => padT + (max>min ? 1-(v-min)/(max-min) : 0.5)*(H-padT-padB);
 
     let svgContent = '';
     // regime background bands (clickable)
@@ -1096,6 +1097,9 @@
       const last = s.pts[s.pts.length-1];
       svgContent += `<circle cx="${x(last[0])}" cy="${y(last[1])}" r="3.6" fill="${s.color}"/>`;
     });
+    if(series.some(s=>s.pts.length<2)){
+      svgContent += `<text x="${W/2}" y="${H/2-8}" text-anchor="middle" font-size="11" fill="#5B6472" font-weight="600">거래 이력이 1개월뿐이라 추이를 그릴 수 없어요</text>`;
+    }
     svg.innerHTML = svgContent;
     svg.querySelectorAll('.regime-hit').forEach(rect=>{
       rect.addEventListener('click', ()=> openPolicyModal(parseInt(rect.dataset.idx, 10)));
