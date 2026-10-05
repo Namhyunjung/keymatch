@@ -3,7 +3,8 @@ name: keymatch batch
 on:
   schedule:
     - cron: '0 18 * * *'   # 매일 03:00 KST — 증분 수집 (최근 3개월)
-    - cron: '0 19 * * 6'   # 매주 일요일 04:00 KST — 전체 재계산
+    # 주간 full 재계산은 뺐음: 201705~ 전체 API 호출이라 Actions 6시간 제한을 매번 넘겨 취소됨.
+    # 백필은 이미 끝났고 재계산 로직은 incremental과 같음. full이 필요하면 로컬이나 workflow_dispatch로.
   workflow_dispatch:
     inputs:
       mode:

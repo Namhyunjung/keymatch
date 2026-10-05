@@ -10,6 +10,7 @@
 """
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass
 from typing import Optional
@@ -43,6 +44,12 @@ FIELD_MAP = {
 
 class AptTradeAPIError(Exception):
     pass
+
+
+def mask_service_key(text: str) -> str:
+    """에러 메시지에 섞인 serviceKey 값을 가림. requests 예외 문자열엔 요청 URL이 통째로
+    들어가서(serviceKey=...), 그대로 pipeline_runs.error_msg에 저장되면 키가 DB에 남음."""
+    return re.sub(r"(serviceKey\W{1,4})[^&'\"\s,)}]+", r"\1***", text)
 
 
 @dataclass
@@ -118,7 +125,7 @@ class AptTradeConnector:
                 backoff = 2 ** attempt
                 time.sleep(backoff)
         raise AptTradeAPIError(
-            f"{lawd_cd}/{deal_ymd} page={page_no} {self.max_retries}회 재시도 실패: {last_err}"
+            mask_service_key(f"{lawd_cd}/{deal_ymd} page={page_no} {self.max_retries}회 재시도 실패: {last_err}")
         )
 
     # ------------------------------------------------------------
@@ -333,3 +340,8 @@ if __name__ == '__main__':
         assert call_count[0] == 5, f"threshold=5인데 {call_count[0]}번 호출하고 멈춤"
         assert "연속 5회 실패" in str(e), f"중단 사유 메시지 누락: {e}"
     print(f"서킷브레이커 자가검증 통과 — 100개 조합 중 {call_count[0]}번만 호출하고 중단")
+
+    # ---- 키 마스킹 자가검증: URL 형태(인코딩됨)와 params dict repr 형태 둘 다 ----
+    masked = mask_service_key("url: /x?serviceKey=ab%2Bc%3D%3D&LAWD_CD=11110 params={'serviceKey': 'ab+c==', 'pageNo': 1}")
+    assert "ab" not in masked and "LAWD_CD=11110" in masked and "'pageNo': 1" in masked, masked
+    print(f"키 마스킹 자가검증 통과 — {masked}")

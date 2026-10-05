@@ -15,6 +15,8 @@ from typing import Optional
 
 import requests
 
+from apt_trade_connector import mask_service_key
+
 
 def _normalize_name(name: str) -> str:
     """단지명 유사도 비교용 정규화.
@@ -47,7 +49,7 @@ def _get_with_retry(url: str, params: dict, timeout: int, max_retries: int = 3) 
         except requests.exceptions.RequestException as e:
             last_err = e
             time.sleep(2 ** attempt)
-    raise KaptAPIError(f"{url} params={params} {max_retries}회 재시도 실패: {last_err}")
+    raise KaptAPIError(mask_service_key(f"{url} params={params} {max_retries}회 재시도 실패: {last_err}"))
 
 
 def fetch_legaldong_apt_list(service_key: str, bjd_code: str, timeout: int = 10) -> list[dict]:
