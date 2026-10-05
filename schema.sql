@@ -151,3 +151,19 @@ CREATE TABLE algo_params (
   is_active      BOOLEAN DEFAULT true,
   created_at     TIMESTAMP DEFAULT now()
 );
+
+-- Supabase: block anon/authenticated access via the REST API.
+-- No policies on purpose — the pipeline connects as postgres (bypasses RLS)
+-- and the frontend reads exported JSON, not the DB.
+ALTER TABLE regions          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE complexes        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pyeong_groups    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE monthly_price    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE regimes          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE leader_complexes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE regime_returns   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sync_results     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sync_summary     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pipeline_runs    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE algo_params      ENABLE ROW LEVEL SECURITY;
