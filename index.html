@@ -450,6 +450,7 @@
   .static-intro .card{ background:var(--paper); border-radius:var(--radius); padding:20px 20px 16px; box-shadow:0 1px 3px rgba(20,24,31,.06); }
   .static-intro .eyebrow{ font-family:'IBM Plex Mono', monospace; font-size:.68rem; letter-spacing:.08em; color:var(--gold); margin-bottom:4px; }
   .static-intro h2{ font-size:.98rem; font-weight:800; color:var(--indigo-deep); margin-bottom:10px; }
+  .static-intro .snap-basis{ font-family:'IBM Plex Mono', monospace; font-size:.68rem; color:var(--ink-faint); margin:-6px 0 10px; }
   .static-intro p{ margin-bottom:8px; color:var(--ink-soft); }
   .static-intro table{ width:100%; border-collapse:collapse; font-size:.78rem; margin:10px 0 8px; }
   .static-intro th, .static-intro td{ text-align:left; padding:7px 4px; border-bottom:1px solid var(--line); }
@@ -622,13 +623,13 @@
       </div>
 
       <!-- ===================== INFO BOTTOM SHEET (대시보드 전용) =====================
-           서비스 소개·오늘의 분석·최근 글. 접혀 있어도 내용은 정적 HTML 그대로라 크롤러가 읽음
-           (오늘의 분석·최근 글은 bake_default_snapshot.py가 채움). 손잡이 끌어올리기/탭으로 펼침. -->
+           서비스 소개·실거래 스냅샷·데이터 노트. 접혀 있어도 내용은 정적 HTML 그대로라 크롤러가 읽음
+           (스냅샷·데이터 노트 목록은 bake_default_snapshot.py가 채움). 손잡이 끌어올리기/탭으로 펼침. -->
       <div class="sheet-backdrop" id="sheetBackdrop"></div>
       <div class="info-sheet" id="infoSheet">
         <button class="sheet-grip" id="sheetGrip" aria-expanded="false" aria-controls="sheetBody">
           <span class="modal-handle"></span>
-          <span class="sheet-peek"><b>키맞추기 더 알아보기</b><span>소개 · 오늘의 분석 · 분석 글</span></span>
+          <span class="sheet-peek"><b>키맞추기 더 알아보기</b><span>소개 · 실거래 스냅샷 · 데이터 노트</span></span>
         </button>
         <div class="sheet-body static-intro" id="sheetBody">
 <div class="card">
@@ -640,16 +641,17 @@
 </div>
 
 <div class="card">
-  <div class="eyebrow">TODAY</div>
-  <h2 id="staticSnapshotTitle">오늘의 분석: 서울 강남구 대치동 84㎡</h2>
+  <div class="eyebrow">SNAPSHOT</div>
+  <h2 id="staticSnapshotTitle">실거래 스냅샷: 서울 강남구 대치동 84㎡</h2>
+  <div class="snap-basis" id="staticSnapshotBasis">매일 자동 갱신 · 최근 거래 2026.09 기준</div>
   <div id="staticSnapshot"><!--bake:snapshot--><p>서울 강남구 대치동 84㎡의 대장단지는 <b>래미안대치팰리스</b>예요. 최근 대표가는 44.0억이고, 2017년 5월 대비 +163.5% 움직였어요. 이 대장단지와 국면별로 같이 움직인 동조단지는 7곳이에요.</p><table><thead><tr><th>단지</th><th>최근가</th><th>대장 대비 갭</th><th>동조 국면</th></tr></thead><tbody><tr><td>한보미도맨션1</td><td>40.4억</td><td>−3.6억</td><td>2/3</td></tr><tr><td>은마</td><td>39.0억</td><td>−5.0억</td><td>3/4</td></tr><tr><td>선경1차(1동-7동)</td><td>37.0억</td><td>−7.0억</td><td>2/3</td></tr><tr><td>쌍용대치아파트1동,2동,3동,5동,6동</td><td>36.0억</td><td>−8.0억</td><td>2/4</td></tr><tr><td>쌍용대치2</td><td>34.9억</td><td>−9.2억</td><td>2/3</td></tr><tr><td>대치현대</td><td>30.2억</td><td>−13.8억</td><td>2/3</td></tr><tr><td>현대1</td><td>25.1억</td><td>−18.9억</td><td>3/3</td></tr></tbody></table><p>'동조 국면'은 거래가 충분해 판정 가능했던 국면 중 대장단지와 같이 움직인 국면 수예요. 갭이 큰데 동조 국면이 많은 단지일수록 대장단지를 아직 덜 따라간 단지일 수 있어요.</p><!--/bake:snapshot--></div>
 </div>
 
 <div class="card">
-  <div class="eyebrow">INSIGHTS</div>
-  <h2>최근 분석 글</h2>
+  <div class="eyebrow">DATA NOTES</div>
+  <h2>데이터 노트 최근 글</h2>
   <ul id="staticPosts"><!--bake:posts--><li><a href="insights/daechi-leader-and-7.html">대치동 84㎡, 래미안대치팰리스를 따라 움직인 단지 7곳</a>후보 35곳 중 7곳이 동조단지로 통과했어요. 급등기엔 대장단지가 오히려 덜 올랐어요.</li><li><a href="insights/regime-divergence.html">급등기엔 다 같이, 회복기엔 셋 중 하나는 반대로</a>국면마다 대장단지와 반대로 움직인 비율이 크게 달랐어요 — 급등기 1%, 회복기 31.5%.</li><li><a href="insights/one-regime-away.html">국면 하나만 더 맞았으면 동조단지였을 단지들</a>판정 가능한 국면 중 딱 1개만 어긋나서 탈락한 1,113개 단지의 상위 사례예요.</li><li><a href="insights/why-not-synced.html">동조단지가 없다고 저평가가 아닌 이유</a>탈락 사유의 88%는 안 맞아서가 아니라 거래가 적어서 판정 자체가 안 된 것이었어요.</li><li><a href="insights/sync-rate-by-region.html">대장단지 따라가기, 동네마다 얼마나 통할까</a>신도시형 택지지구는 통과율 70~80%대인데, 강남3구는 오히려 10% 안팎이었어요.</li><!--/bake:posts--></ul>
-  <a class="more" href="insights.html">분석 글 전체 보기 →</a>
+  <a class="more" href="insights.html">데이터 노트 전체 보기 →</a>
 </div>
         </div>
       </div>
@@ -1222,7 +1224,7 @@
 <footer style="text-align:center; padding:24px 0 40px; font-size:12px; color:#888;">
   <a href="about.html" style="color:inherit; text-decoration:underline;">About</a>
   &nbsp;·&nbsp;
-  <a href="insights.html" style="color:inherit; text-decoration:underline;">Insights</a>
+  <a href="insights.html" style="color:inherit; text-decoration:underline;">데이터 노트</a>
   &nbsp;·&nbsp;
   <a href="privacy.html" style="color:inherit; text-decoration:underline;">개인정보처리방침</a>
   &nbsp;·&nbsp;

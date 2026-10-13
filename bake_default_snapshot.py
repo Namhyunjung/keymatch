@@ -105,7 +105,11 @@ def bake() -> None:
 
     # 하단 정적 섹션(.static-intro) — 크롤러가 JS 없이 읽는 실데이터 요약 + 최근 글 목록
     pg_label = next(g['label'] for g in index['pyeongGroups'] if g['id'] == pg_id)
-    html = sub_tag(html, 'staticSnapshotTitle', f"오늘의 분석: {region_label} {pg_label}")
+    # 기본 지역이 고정이라 숫자는 새 실거래가 반영될 때만 바뀜 — "오늘의"가 아니라 최근 거래월을 기준으로 표기
+    latest_ym = max((u['info']['recent'].split(' ')[0] for u in payload['units'] if u['info'].get('recent')), default='')
+    basis = f" · 최근 거래 20{latest_ym} 기준" if latest_ym else ''
+    html = sub_tag(html, 'staticSnapshotTitle', f"실거래 스냅샷: {region_label} {pg_label}")
+    html = sub_tag(html, 'staticSnapshotBasis', f"매일 자동 갱신{basis}")
     html = sub_marker(html, 'snapshot', snapshot_html(leader, payload['units'], region_label, pg_label, delta_text))
     html = sub_marker(html, 'posts', recent_posts_html())
 
