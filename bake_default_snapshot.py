@@ -64,7 +64,7 @@ def recent_posts_html(limit: int = 5) -> str:
     # insights.html의 정적 목록(손으로 관리)을 그대로 읽어 위에서 limit개 복사 — 목록 관리처는 한 곳만 유지
     src = (ROOT / 'insights.html').read_text(encoding='utf-8')
     items = re.findall(r'<li class="post-item">\s*<a href="([^"]+)">(.*?)</a>.*?<div class="post-summary">(.*?)</div>', src, re.DOTALL)
-    return ''.join(f'<li><a href="{href}">{title}</a> — {summary}</li>' for href, title, summary in items[:limit])
+    return ''.join(f'<li><a href="{href}">{title}</a>{summary}</li>' for href, title, summary in items[:limit])
 
 
 def bake() -> None:
