@@ -63,7 +63,9 @@ def snapshot_html(leader: dict, units: list, region_label: str, pg_label: str, d
 def recent_posts_html(limit: int = 5) -> str:
     # insights.html의 정적 목록(손으로 관리)을 그대로 읽어 위에서 limit개 복사 — 목록 관리처는 한 곳만 유지
     src = (ROOT / 'insights.html').read_text(encoding='utf-8')
-    items = re.findall(r'<li class="post-item">\s*<a href="([^"]+)">(.*?)</a>.*?<div class="post-summary">(.*?)</div>', src, re.DOTALL)
+    items = re.findall(r'<a class="report post-item" href="([^"]+)">.*?<h3>(.*?)</h3><p class="post-summary">(.*?)</p>', src)
+    if not items:
+        raise RuntimeError('insights.html 글 카드 못 찾음 — 카드 형식이 바뀌었으면 이 정규식도 고칠 것')
     return ''.join(f'<li><a href="{href}">{title}</a>{summary}</li>' for href, title, summary in items[:limit])
 
 

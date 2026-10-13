@@ -13,6 +13,7 @@ bake_default_snapshot.py가 insights.html을 읽어 채움.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from html import escape
@@ -36,17 +37,18 @@ def publish_one(entry: dict, root: Path = ROOT) -> None:
     (root / 'insights' / f'{slug}.html').write_text(html, encoding='utf-8')
     (root / 'drafts' / f'{slug}.html').unlink()
 
-    li = (f'    <li class="post-item">\n'
-          f'      <a href="insights/{slug}.html">{escape(entry["title"])}</a>\n'
-          f'      <div class="post-date">{date}</div>\n'
-          f'      <div class="post-summary">{escape(entry["summary"])}</div>\n'
-          f'    </li>\n')
-    anchor = '<ul class="post-list" id="postList">\n'
+    dotted = date.replace('-', '.')
+    card = (f'        <a class="report post-item" href="insights/{slug}.html"><span class="tag">{escape(entry["tag"])}</span>'
+            f'<h3>{escape(entry["title"])}</h3><p class="post-summary">{escape(entry["summary"])}</p>'
+            f'<span class="date post-date">{dotted}</span></a>\n')
+    anchor = '<div class="reports" id="postList">\n'
     idx = root / 'insights.html'
     s = idx.read_text(encoding='utf-8')
     if anchor not in s:
         raise RuntimeError('insights.html 목록 자리 못 찾음')
-    idx.write_text(s.replace(anchor, anchor + li, 1), encoding='utf-8')
+    s = s.replace(anchor, anchor + card, 1)
+    s = re.sub(r'(<span id="latestDate">)[^<]*(</span>)', rf'\g<1>{dotted}\g<2>', s, count=1)
+    idx.write_text(s, encoding='utf-8')
 
     sm = root / 'sitemap.xml'
     s = sm.read_text(encoding='utf-8')
@@ -74,14 +76,15 @@ def _selfcheck() -> None:
         (r / 'drafts' / 'a.html').write_text(f'<head>{NOINDEX}</head><div class="meta">{{{{DATE}}}}</div>', encoding='utf-8')
         (r / 'drafts' / 'b.html').write_text('x', encoding='utf-8')
         (r / 'drafts' / 'queue.json').write_text(json.dumps([
-            {'slug': 'a', 'date': '2026-01-02', 'title': 'A & B', 'summary': 's'},
-            {'slug': 'b', 'date': '2026-01-05', 'title': 'B', 'summary': 's'}]), encoding='utf-8')
-        (r / 'insights.html').write_text('<ul class="post-list" id="postList">\n</ul>', encoding='utf-8')
+            {'slug': 'a', 'date': '2026-01-02', 'title': 'A & B', 'summary': 's', 'tag': 'T'},
+            {'slug': 'b', 'date': '2026-01-05', 'title': 'B', 'summary': 's', 'tag': 'T'}]), encoding='utf-8')
+        (r / 'insights.html').write_text('<span id="latestDate">x</span><div class="reports" id="postList">\n</div>', encoding='utf-8')
         (r / 'sitemap.xml').write_text('<urlset>\n</urlset>', encoding='utf-8')
         assert run('2026-01-03', r) == ['a']
         out = (r / 'insights' / 'a.html').read_text(encoding='utf-8')
         assert '2026-01-02' in out and 'noindex' not in out
-        assert 'A &amp; B' in (r / 'insights.html').read_text(encoding='utf-8')
+        idx = (r / 'insights.html').read_text(encoding='utf-8')
+        assert 'A &amp; B' in idx and '2026.01.02</span></a>' in idx and 'latestDate">2026.01.02<' in idx
         assert 'insights/a.html' in (r / 'sitemap.xml').read_text(encoding='utf-8')
         assert (r / 'drafts' / 'b.html').exists() and not (r / 'drafts' / 'a.html').exists()
         assert run('2026-01-03', r) == []  # 같은 날 재실행해도 중복 발행 없음
