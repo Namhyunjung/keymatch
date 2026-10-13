@@ -51,6 +51,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           python export_for_frontend.py
+          python bake_default_snapshot.py
 
       - name: 변경사항 커밋
         run: |

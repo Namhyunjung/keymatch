@@ -37,6 +37,11 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://keymatch-steel.vercel.app/contact.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
     <loc>https://keymatch-steel.vercel.app/privacy.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>

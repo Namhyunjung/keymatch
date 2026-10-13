@@ -419,6 +419,16 @@
   .addr-link:hover, .addr-link:active{ text-decoration:underline; }
 
   .section-title{ font-size:.98rem; font-weight:800; margin:18px 0 10px; }
+  /* ---------- 정적 소개/분석 섹션 (JS 없이 읽히는 본문) ---------- */
+  .static-intro{ width:100%; max-width:420px; margin-top:40px; color:var(--ink); line-height:1.75; font-size:.92rem; }
+  .static-intro h2{ font-size:1.02rem; color:var(--indigo); margin:28px 0 8px; }
+  .static-intro p{ margin-bottom:10px; color:var(--ink-soft); }
+  .static-intro table{ width:100%; border-collapse:collapse; font-size:.82rem; margin:8px 0 6px; }
+  .static-intro th, .static-intro td{ text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); }
+  .static-intro th{ color:var(--ink-faint); font-weight:600; }
+  .static-intro ul{ padding-left:18px; }
+  .static-intro li{ margin-bottom:8px; color:var(--ink-soft); }
+  .static-intro a{ color:var(--indigo); }
 </style>
 </head>
 <body>
@@ -469,7 +479,7 @@
           <div class="regime-labels" id="regimeLabels1"></div>
         </div>
 
-        <button class="cta" id="ctaToList">이 대장단지와 동조하는 단지 <span class="n" id="ctaCount">9개</span> 보기 →</button>
+        <button class="cta" id="ctaToList">이 대장단지와 동조하는 단지 <span class="n" id="ctaCount">7개</span> 보기 →</button>
       </div>
 
       <!-- ===================== SCREEN 2 : LIST ===================== -->
@@ -579,20 +589,6 @@
         </div>
       </div>
 
-      <!-- ===================== AD INTERSTITIAL MODAL ===================== -->
-      <!-- "동조단지 보기" 버튼 클릭 시 이동 전에 뜸. AdSense 계정 승인 나면
-           adsenseClient/adsenseSlot 값만 채우면 자동으로 실광고로 전환됨 (검색: ADSENSE_CLIENT). -->
-      <div class="modal-overlay" id="adModal">
-        <div class="modal-sheet">
-          <div class="modal-handle"></div>
-          <div class="modal-title">잠시만요</div>
-          <div id="adSlotBox" style="min-height:250px; display:flex; align-items:center; justify-content:center; background:var(--surface-alt, #f4f4f6); border-radius:12px; color:var(--ink-faint); font-size:13px; margin-bottom:14px;">
-            광고 준비 중
-          </div>
-          <button class="modal-close" id="adModalClose">계속 보기</button>
-        </div>
-      </div>
-
       <!-- ===================== REGION PICKER MODAL ===================== -->
       <div class="modal-overlay" id="regionModal">
         <div class="modal-sheet">
@@ -635,42 +631,8 @@
       goToScreen(tab.dataset.target);
     });
   });
-  // ---------- 동조단지 보기 전 광고 인터스티셜 ----------
-  // adsbygoogle.js는 <head>에서 사이트 전체에 이미 로드해둠(애드센스 심사/소유권 확인용).
-  // ADSENSE_SLOT은 애드센스에서 광고 단위 만들면 나오는 슬롯 ID — 승인 후 채우면 됨.
-  // 비어있는 동안은 "광고 준비 중" 자리표시만 보임.
-  const ADSENSE_CLIENT = 'ca-pub-6787031668536428';
-  const ADSENSE_SLOT = '';  // 예: '1234567890' — 애드센스에서 광고 단위 생성 후 채우기
-  let adsenseLoaded = false;
-
-  function showAdModal(){
-    // ADSENSE_SLOT 비어있는 동안(승인 전)은 빈 광고 자리 모달을 띄우지 않고 바로 다음 화면으로 감 —
-    // "콘텐츠 없이 이동 목적으로만 쓰이는 화면"으로 심사 거절 사유가 됐었음(2026-09-22).
-    if(!ADSENSE_SLOT){
-      goToScreen('list');
-      return;
-    }
-    if(!adsenseLoaded){
-      adsenseLoaded = true;
-      document.getElementById('adSlotBox').innerHTML =
-        `<ins class="adsbygoogle" style="display:block;width:100%;min-height:250px"
-              data-ad-client="${ADSENSE_CLIENT}" data-ad-slot="${ADSENSE_SLOT}"
-              data-ad-format="auto" data-full-width-responsive="true"></ins>`;
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    }
-    document.getElementById('adModal').classList.add('show');
-  }
-  document.getElementById('ctaToList').addEventListener('click', showAdModal);
-  document.getElementById('adModalClose').addEventListener('click', ()=>{
-    document.getElementById('adModal').classList.remove('show');
-    goToScreen('list');
-  });
-  document.getElementById('adModal').addEventListener('click', (e)=>{
-    if(e.target.id==='adModal'){
-      e.target.classList.remove('show');
-      goToScreen('list');
-    }
-  });
+  // 광고 인터스티셜은 AdSense 심사 중 '준비 안 된 사이트' 신호라 제거(2026-10-14). 승인 후 필요하면 git 이력에서 복구.
+  document.getElementById('ctaToList').addEventListener('click', ()=> goToScreen('list'));
   document.getElementById('backToDashboard').addEventListener('click', ()=> goToScreen('dashboard'));
   document.getElementById('backToList').addEventListener('click', ()=> goToScreen('list'));
 
@@ -1154,6 +1116,20 @@
   })();
 </script>
 
+<section class="static-intro">
+  <h2>키맞추기는 이런 서비스예요</h2>
+  <p>아파트 시장에는 그 동네 가격 흐름을 먼저 보여주는 '대장단지'가 있어요. 대장단지가 오르면 같은 생활권의 다른 단지도 시차를 두고 따라 오르는 경우가 많은데, 이걸 흔히 '키맞추기'라고 불러요. 이 서비스는 그 통념이 실제 거래에서도 맞는지를 국토교통부 실거래가 공개 데이터로 확인해요.</p>
+  <p>비교는 정책 국면별로 나눠서 해요. 2017년 이후를 규제강화기·급등기·하락기·회복기·재규제기 다섯 구간으로 자르고, 각 구간 안에서 대장단지와 같은 방향으로, 비슷한 폭만큼 움직였는지를 따져요. 여러 국면에서 꾸준히 같이 움직였는데 지금 가격 차이(갭)가 벌어져 있다면, 아직 따라가지 못한 단지일 수 있다는 뜻이에요.</p>
+  <p>같은 단지라도 59㎡와 84㎡는 사실상 다른 시장이라 평형은 섞지 않아요. 거래가 적은 달은 증여성 저가 거래 같은 이상치를 걸러내고, 판정에 쓰기엔 거래가 부족한 국면은 '판정불가'로 따로 표시해요. 자세한 기준은 <a href="about.html">About</a>에 정리해 뒀어요.</p>
+
+  <h2 id="staticSnapshotTitle">오늘의 분석: 서울 강남구 대치동 84㎡</h2>
+  <div id="staticSnapshot"><!--bake:snapshot--><p>서울 강남구 대치동 84㎡의 대장단지는 <b>래미안대치팰리스</b>예요. 최근 대표가는 44.0억이고, 2017년 5월 대비 +163.5% 움직였어요. 이 대장단지와 국면별로 같이 움직인 동조단지는 7곳이에요.</p><table><thead><tr><th>단지</th><th>최근가</th><th>대장 대비 갭</th><th>동조 국면</th></tr></thead><tbody><tr><td>한보미도맨션1</td><td>40.4억</td><td>−3.6억</td><td>2/3</td></tr><tr><td>은마</td><td>39.0억</td><td>−5.0억</td><td>3/4</td></tr><tr><td>선경1차(1동-7동)</td><td>37.0억</td><td>−7.0억</td><td>2/3</td></tr><tr><td>쌍용대치아파트1동,2동,3동,5동,6동</td><td>36.0억</td><td>−8.0억</td><td>2/4</td></tr><tr><td>쌍용대치2</td><td>34.9억</td><td>−9.2억</td><td>2/3</td></tr><tr><td>대치현대</td><td>30.2억</td><td>−13.8억</td><td>2/3</td></tr><tr><td>현대1</td><td>25.1억</td><td>−18.9억</td><td>3/3</td></tr></tbody></table><p>'동조 국면'은 거래가 충분해 판정 가능했던 국면 중 대장단지와 같이 움직인 국면 수예요. 갭이 큰데 동조 국면이 많은 단지일수록 대장단지를 아직 덜 따라간 단지일 수 있어요.</p><!--/bake:snapshot--></div>
+
+  <h2>최근 분석 글</h2>
+  <ul id="staticPosts"><!--bake:posts--><li><a href="insights/regime-divergence.html">급등기엔 다 같이, 회복기엔 셋 중 하나는 반대로</a> — 국면마다 대장단지와 반대로 움직인 비율이 크게 달랐어요 — 급등기 1%, 회복기 31.5%.</li><li><a href="insights/one-regime-away.html">국면 하나만 더 맞았으면 동조단지였을 단지들</a> — 판정 가능한 국면 중 딱 1개만 어긋나서 탈락한 1,113개 단지의 상위 사례예요.</li><li><a href="insights/why-not-synced.html">동조단지가 없다고 저평가가 아닌 이유</a> — 탈락 사유의 88%는 안 맞아서가 아니라 거래가 적어서 판정 자체가 안 된 것이었어요.</li><li><a href="insights/sync-rate-by-region.html">대장단지 따라가기, 동네마다 얼마나 통할까</a> — 신도시형 택지지구는 통과율 70~80%대인데, 강남3구는 오히려 10% 안팎이었어요.</li><!--/bake:posts--></ul>
+  <p><a href="insights.html">분석 글 전체 보기 →</a></p>
+</section>
+
 <footer style="text-align:center; padding:24px 0 40px; font-size:12px; color:#888;">
   <a href="about.html" style="color:inherit; text-decoration:underline;">About</a>
   &nbsp;·&nbsp;
@@ -1162,6 +1138,8 @@
   <a href="privacy.html" style="color:inherit; text-decoration:underline;">개인정보처리방침</a>
   &nbsp;·&nbsp;
   <a href="terms.html" style="color:inherit; text-decoration:underline;">이용약관</a>
+  &nbsp;·&nbsp;
+  <a href="contact.html" style="color:inherit; text-decoration:underline;">문의</a>
 </footer>
 </body>
 </html>
