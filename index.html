@@ -461,6 +461,7 @@
   .static-intro li:last-child{ border-bottom:none; }
   .static-intro li a{ display:block; font-weight:700; color:var(--ink); text-decoration:none; margin-bottom:2px; }
   .static-intro p a{ color:var(--indigo); font-weight:600; }
+  .static-intro button.more{ border:none; background:none; font:inherit; font-weight:700; color:var(--indigo); cursor:pointer; padding:0; }
   .static-intro .more{ display:inline-block; margin-top:6px; font-weight:700; color:var(--indigo); text-decoration:none; }
 </style>
 </head>
@@ -623,13 +624,13 @@
       </div>
 
       <!-- ===================== INFO BOTTOM SHEET (대시보드 전용) =====================
-           서비스 소개·실거래 스냅샷·데이터 노트. 접혀 있어도 내용은 정적 HTML 그대로라 크롤러가 읽음
-           (스냅샷·데이터 노트 목록은 bake_default_snapshot.py가 채움). 손잡이 끌어올리기/탭으로 펼침. -->
+           서비스 소개·오늘의 분석(매일 다른 동네)·데이터 노트. 접혀 있어도 내용은 정적 HTML 그대로라 크롤러가 읽음
+           (오늘의 분석·데이터 노트 목록은 bake_default_snapshot.py가 채움). 손잡이 끌어올리기/탭으로 펼침. -->
       <div class="sheet-backdrop" id="sheetBackdrop"></div>
       <div class="info-sheet" id="infoSheet">
         <button class="sheet-grip" id="sheetGrip" aria-expanded="false" aria-controls="sheetBody">
           <span class="modal-handle"></span>
-          <span class="sheet-peek"><b>키맞추기 더 알아보기</b><span>소개 · 실거래 스냅샷 · 데이터 노트</span></span>
+          <span class="sheet-peek"><b>키맞추기 더 알아보기</b><span>소개 · 오늘의 분석 · 데이터 노트</span></span>
         </button>
         <div class="sheet-body static-intro" id="sheetBody">
 <div class="card">
@@ -641,10 +642,10 @@
 </div>
 
 <div class="card">
-  <div class="eyebrow">SNAPSHOT</div>
-  <h2 id="staticSnapshotTitle">실거래 스냅샷: 서울 강남구 대치동 84㎡</h2>
-  <div class="snap-basis" id="staticSnapshotBasis">매일 자동 갱신 · 최근 거래 2026.09 기준</div>
-  <div id="staticSnapshot"><!--bake:snapshot--><p>서울 강남구 대치동 84㎡의 대장단지는 <b>래미안대치팰리스</b>예요. 최근 대표가는 44.0억이고, 2017년 5월 대비 +163.5% 움직였어요. 이 대장단지와 국면별로 같이 움직인 동조단지는 7곳이에요.</p><table><thead><tr><th>단지</th><th>최근가</th><th>대장 대비 갭</th><th>동조 국면</th></tr></thead><tbody><tr><td>한보미도맨션1</td><td>40.4억</td><td>−3.6억</td><td>2/3</td></tr><tr><td>은마</td><td>39.0억</td><td>−5.0억</td><td>3/4</td></tr><tr><td>선경1차(1동-7동)</td><td>37.0억</td><td>−7.0억</td><td>2/3</td></tr><tr><td>쌍용대치아파트1동,2동,3동,5동,6동</td><td>36.0억</td><td>−8.0억</td><td>2/4</td></tr><tr><td>쌍용대치2</td><td>34.9억</td><td>−9.2억</td><td>2/3</td></tr><tr><td>대치현대</td><td>30.2억</td><td>−13.8억</td><td>2/3</td></tr><tr><td>현대1</td><td>25.1억</td><td>−18.9억</td><td>3/3</td></tr></tbody></table><p>'동조 국면'은 거래가 충분해 판정 가능했던 국면 중 대장단지와 같이 움직인 국면 수예요. 갭이 큰데 동조 국면이 많은 단지일수록 대장단지를 아직 덜 따라간 단지일 수 있어요.</p><!--/bake:snapshot--></div>
+  <div class="eyebrow">TODAY</div>
+  <h2 id="staticSnapshotTitle">오늘의 분석: 경기 남양주시 퇴계원리 84㎡</h2>
+  <div class="snap-basis" id="staticSnapshotBasis">2026.10.14 · 매일 다른 동네 · 최근 거래 2026.10 기준</div>
+  <div id="staticSnapshot"><!--bake:snapshot--><p>경기 남양주시 퇴계원리 84㎡의 대장단지는 <b>퇴계원힐스테이트</b>예요. 최근 대표가는 6.8억이고, 2017년 5월 대비 +65.6% 움직였어요. 이 대장단지와 국면별로 같이 움직인 동조단지는 7곳이에요.</p><table><thead><tr><th>단지</th><th>최근가</th><th>대장 대비 갭</th><th>동조 국면</th></tr></thead><tbody><tr><td>신별내퇴계원어울림</td><td>5.7억</td><td>−1.1억</td><td>3/5</td></tr><tr><td>엘리시아</td><td>5.2억</td><td>−1.6억</td><td>2/5</td></tr><tr><td>퇴계원쌍용예가</td><td>5.0억</td><td>−1.8억</td><td>3/4</td></tr><tr><td>강남아파트</td><td>5.0억</td><td>−1.8억</td><td>3/5</td></tr><tr><td>극동</td><td>4.5억</td><td>−2.3억</td><td>3/3</td></tr><tr><td>신도</td><td>4.5억</td><td>−2.3억</td><td>3/5</td></tr><tr><td>성원</td><td>4.5억</td><td>−2.2억</td><td>2/4</td></tr></tbody></table><p>'동조 국면'은 거래가 충분해 판정 가능했던 국면 중 대장단지와 같이 움직인 국면 수예요. 갭이 큰데 동조 국면이 많은 단지일수록 대장단지를 아직 덜 따라간 단지일 수 있어요.</p><button class="more snap-go" data-region="4136026521" data-pg="1">대시보드에서 이 동네 보기 →</button><!--/bake:snapshot--></div>
 </div>
 
 <div class="card">
@@ -736,6 +737,13 @@
   });
   sheetGrip.addEventListener('pointercancel', ()=>{ infoSheet.classList.remove('dragging'); dragStartY = null; setSheet(infoSheet.classList.contains('open')); });
   sheetBackdrop.addEventListener('click', ()=> setSheet(false));
+  // '오늘의 분석' 동네를 대시보드에 바로 띄움
+  document.getElementById('sheetBody').addEventListener('click', e=>{
+    const btn = e.target.closest('.snap-go');
+    if(!btn) return;
+    setSheet(false);
+    loadRegion(btn.dataset.region, parseInt(btn.dataset.pg, 10));
+  });
   document.addEventListener('keydown', e=>{ if(e.key==='Escape' && infoSheet.classList.contains('open')) setSheet(false); });
   document.getElementById('ctaToList').addEventListener('click', ()=> goToScreen('list'));
   document.getElementById('backToDashboard').addEventListener('click', ()=> goToScreen('dashboard'));

@@ -69,6 +69,36 @@ def recent_posts_html(limit: int = 5) -> str:
     return ''.join(f'<li><a href="{href}">{title}</a>{summary}</li>' for href, title, summary in items[:limit])
 
 
+TODAY_PG = 1           # 오늘의 분석은 84㎡ 기준
+TODAY_MIN_UNITS = 5    # 동조단지가 이 이상인 읍면동만 후보 — 표가 너무 빈약한 동네는 제외
+
+
+def today_kst() -> str:
+    from datetime import datetime, timedelta, timezone
+    return (datetime.now(timezone.utc) + timedelta(hours=9)).strftime('%Y.%m.%d')
+
+
+def pick_today_region(index: dict, day: str | None = None) -> tuple[str, str, int, dict]:
+    """후보 동네를 코드 해시순(고정된 뒤섞기)으로 줄 세우고 날짜 순번으로 하나 고름.
+    같은 날 여러 번 돌려도(03시 배치·09시 발행) 같은 동네, 후보를 한 바퀴 돌 때까지 중복 없음,
+    코드순이 아니라서 연달아 같은 구가 나오지 않음."""
+    import hashlib
+    from datetime import date
+    pool = []
+    for r in sorted(index['regions'], key=lambda r: hashlib.md5(r['code'].encode()).hexdigest()):
+        f = DATA_DIR / 'r' / r['code'] / f'{TODAY_PG}.json'
+        if not r.get('dong') or not f.exists():
+            continue
+        payload = json.loads(f.read_text(encoding='utf-8'))
+        if len(payload['units']) >= TODAY_MIN_UNITS:
+            pool.append((r['code'], r['label'], payload))
+    if not pool:
+        raise RuntimeError('오늘의 분석 후보 동네가 없음')
+    d = date.fromisoformat((day or today_kst()).replace('.', '-'))
+    code, label, payload = pool[d.toordinal() % len(pool)]
+    return code, label, TODAY_PG, payload
+
+
 def bake() -> None:
     index = json.loads((DATA_DIR / 'index.json').read_text(encoding='utf-8'))
     region_code = index['defaultRegion']
@@ -103,14 +133,18 @@ def bake() -> None:
     html = sub_tag(html, 'ctaCount', f"{units_count}개")
     html = re.sub(r'(id="mapLinkDash"[^>]*href=")[^"]*(")', rf'\g<1>{map_url}\g<2>', html, count=1)
 
-    # 하단 정적 섹션(.static-intro) — 크롤러가 JS 없이 읽는 실데이터 요약 + 최근 글 목록
-    pg_label = next(g['label'] for g in index['pyeongGroups'] if g['id'] == pg_id)
-    # 기본 지역이 고정이라 숫자는 새 실거래가 반영될 때만 바뀜 — "오늘의"가 아니라 최근 거래월을 기준으로 표기
-    latest_ym = max((u['info']['recent'].split(' ')[0] for u in payload['units'] if u['info'].get('recent')), default='')
+    # 하단 시트 '오늘의 분석' — 날짜(KST)마다 다른 동네를 돌아가며 보여줌(기본 지역 대시보드 값과는 별개)
+    t_code, t_label, t_pg, t_payload = pick_today_region(index)
+    t_leader = t_payload['leader']
+    t_ret = (t_leader['pts'][-1][1] / t_leader['pts'][0][1] - 1) * 100
+    t_delta = f"{'+' if t_ret >= 0 else ''}{t_ret:.1f}%"
+    t_pg_label = next(g['label'] for g in index['pyeongGroups'] if g['id'] == t_pg)
+    latest_ym = max((u['info']['recent'].split(' ')[0] for u in t_payload['units'] if u['info'].get('recent')), default='')
     basis = f" · 최근 거래 20{latest_ym} 기준" if latest_ym else ''
-    html = sub_tag(html, 'staticSnapshotTitle', f"실거래 스냅샷: {region_label} {pg_label}")
-    html = sub_tag(html, 'staticSnapshotBasis', f"매일 자동 갱신{basis}")
-    html = sub_marker(html, 'snapshot', snapshot_html(leader, payload['units'], region_label, pg_label, delta_text))
+    html = sub_tag(html, 'staticSnapshotTitle', f"오늘의 분석: {t_label} {t_pg_label}")
+    html = sub_tag(html, 'staticSnapshotBasis', f"{today_kst()} · 매일 다른 동네{basis}")
+    html = sub_marker(html, 'snapshot', snapshot_html(t_leader, t_payload['units'], t_label, t_pg_label, t_delta)
+                      + f'<button class="more snap-go" data-region="{t_code}" data-pg="{t_pg}">대시보드에서 이 동네 보기 →</button>')
     html = sub_marker(html, 'posts', recent_posts_html())
 
     INDEX_HTML.write_text(html, encoding='utf-8')
