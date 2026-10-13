@@ -420,7 +420,33 @@
 
   .section-title{ font-size:.98rem; font-weight:800; margin:18px 0 10px; }
   /* ---------- 정적 소개/분석 섹션 (JS 없이 읽히는 본문) — 폰 프레임 아래 카드 3장 ---------- */
-  .static-intro{ width:100%; max-width:390px; margin-top:28px; display:flex; flex-direction:column; gap:14px; color:var(--ink); line-height:1.7; font-size:.86rem; }
+  .static-intro{ display:flex; flex-direction:column; gap:12px; color:var(--ink); line-height:1.7; font-size:.86rem; }
+  /* 바텀시트 — 접힌 상태는 손잡이+제목(64px)만 보임, 대시보드 화면에서만 표시 */
+  .info-sheet{
+    position:absolute; left:0; right:0; bottom:0; height:86%; z-index:40;
+    background:var(--bg); border-radius:22px 22px 0 0;
+    box-shadow:0 -6px 24px rgba(23,30,61,.12);
+    display:flex; flex-direction:column;
+    transform:translateY(calc(100% - var(--peek))); transition:transform .28s cubic-bezier(.2,.8,.2,1);
+    --peek:64px;
+  }
+  .info-sheet.open{ transform:translateY(0); }
+  .info-sheet.dragging{ transition:none; }
+  .info-sheet[hidden]{ display:none; }
+  .sheet-grip{
+    flex:none; width:100%; height:var(--peek); border:none; background:var(--paper);
+    border-radius:22px 22px 0 0; padding:8px 20px 0; cursor:grab; touch-action:none;
+    display:flex; flex-direction:column; align-items:center; font:inherit; color:inherit;
+  }
+  .sheet-grip .modal-handle{ margin:0 auto 8px; }
+  .sheet-peek{ display:flex; align-items:baseline; justify-content:space-between; width:100%; }
+  .sheet-peek b{ font-size:.9rem; font-weight:800; color:var(--indigo-deep); }
+  .sheet-peek span{ font-size:.7rem; color:var(--ink-faint); }
+  .sheet-body{ flex:1; overflow-y:auto; padding:12px 14px 24px; }
+  .sheet-body::-webkit-scrollbar{ width:0; }
+  .sheet-backdrop{ position:absolute; inset:0; z-index:39; background:rgba(20,24,31,.35); opacity:0; pointer-events:none; transition:opacity .2s; }
+  .sheet-backdrop.show{ opacity:1; pointer-events:auto; }
+  #dashboard{ padding-bottom:calc(64px + 20px); }
   .static-intro .card{ background:var(--paper); border-radius:var(--radius); padding:20px 20px 16px; box-shadow:0 1px 3px rgba(20,24,31,.06); }
   .static-intro .eyebrow{ font-family:'IBM Plex Mono', monospace; font-size:.68rem; letter-spacing:.08em; color:var(--gold); margin-bottom:4px; }
   .static-intro h2{ font-size:.98rem; font-weight:800; color:var(--indigo-deep); margin-bottom:10px; }
@@ -595,6 +621,39 @@
         </div>
       </div>
 
+      <!-- ===================== INFO BOTTOM SHEET (대시보드 전용) =====================
+           서비스 소개·오늘의 분석·최근 글. 접혀 있어도 내용은 정적 HTML 그대로라 크롤러가 읽음
+           (오늘의 분석·최근 글은 bake_default_snapshot.py가 채움). 손잡이 끌어올리기/탭으로 펼침. -->
+      <div class="sheet-backdrop" id="sheetBackdrop"></div>
+      <div class="info-sheet" id="infoSheet">
+        <button class="sheet-grip" id="sheetGrip" aria-expanded="false" aria-controls="sheetBody">
+          <span class="modal-handle"></span>
+          <span class="sheet-peek"><b>키맞추기 더 알아보기</b><span>소개 · 오늘의 분석 · 분석 글</span></span>
+        </button>
+        <div class="sheet-body static-intro" id="sheetBody">
+<div class="card">
+  <div class="eyebrow">ABOUT</div>
+  <h2>키맞추기는 이런 서비스예요</h2>
+  <p>아파트 시장에는 그 동네 가격 흐름을 먼저 보여주는 '대장단지'가 있어요. 대장단지가 오르면 같은 생활권의 다른 단지도 시차를 두고 따라 오르는 경우가 많은데, 이걸 흔히 '키맞추기'라고 불러요. 이 서비스는 그 통념이 실제 거래에서도 맞는지를 국토교통부 실거래가 공개 데이터로 확인해요.</p>
+  <p>비교는 정책 국면별로 나눠서 해요. 2017년 이후를 규제강화기·급등기·하락기·회복기·재규제기 다섯 구간으로 자르고, 각 구간 안에서 대장단지와 같은 방향으로, 비슷한 폭만큼 움직였는지를 따져요. 여러 국면에서 꾸준히 같이 움직였는데 지금 가격 차이(갭)가 벌어져 있다면, 아직 따라가지 못한 단지일 수 있다는 뜻이에요.</p>
+  <p>같은 단지라도 59㎡와 84㎡는 사실상 다른 시장이라 평형은 섞지 않아요. 거래가 적은 달은 증여성 저가 거래 같은 이상치를 걸러내고, 판정에 쓰기엔 거래가 부족한 국면은 '판정불가'로 따로 표시해요. 자세한 기준은 <a href="about.html">About</a>에 정리해 뒀어요.</p>
+</div>
+
+<div class="card">
+  <div class="eyebrow">TODAY</div>
+  <h2 id="staticSnapshotTitle">오늘의 분석: 서울 강남구 대치동 84㎡</h2>
+  <div id="staticSnapshot"><!--bake:snapshot--><p>서울 강남구 대치동 84㎡의 대장단지는 <b>래미안대치팰리스</b>예요. 최근 대표가는 44.0억이고, 2017년 5월 대비 +163.5% 움직였어요. 이 대장단지와 국면별로 같이 움직인 동조단지는 7곳이에요.</p><table><thead><tr><th>단지</th><th>최근가</th><th>대장 대비 갭</th><th>동조 국면</th></tr></thead><tbody><tr><td>한보미도맨션1</td><td>40.4억</td><td>−3.6억</td><td>2/3</td></tr><tr><td>은마</td><td>39.0억</td><td>−5.0억</td><td>3/4</td></tr><tr><td>선경1차(1동-7동)</td><td>37.0억</td><td>−7.0억</td><td>2/3</td></tr><tr><td>쌍용대치아파트1동,2동,3동,5동,6동</td><td>36.0억</td><td>−8.0억</td><td>2/4</td></tr><tr><td>쌍용대치2</td><td>34.9억</td><td>−9.2억</td><td>2/3</td></tr><tr><td>대치현대</td><td>30.2억</td><td>−13.8억</td><td>2/3</td></tr><tr><td>현대1</td><td>25.1억</td><td>−18.9억</td><td>3/3</td></tr></tbody></table><p>'동조 국면'은 거래가 충분해 판정 가능했던 국면 중 대장단지와 같이 움직인 국면 수예요. 갭이 큰데 동조 국면이 많은 단지일수록 대장단지를 아직 덜 따라간 단지일 수 있어요.</p><!--/bake:snapshot--></div>
+</div>
+
+<div class="card">
+  <div class="eyebrow">INSIGHTS</div>
+  <h2>최근 분석 글</h2>
+  <ul id="staticPosts"><!--bake:posts--><li><a href="insights/daechi-leader-and-7.html">대치동 84㎡, 래미안대치팰리스를 따라 움직인 단지 7곳</a>후보 35곳 중 7곳이 동조단지로 통과했어요. 급등기엔 대장단지가 오히려 덜 올랐어요.</li><li><a href="insights/regime-divergence.html">급등기엔 다 같이, 회복기엔 셋 중 하나는 반대로</a>국면마다 대장단지와 반대로 움직인 비율이 크게 달랐어요 — 급등기 1%, 회복기 31.5%.</li><li><a href="insights/one-regime-away.html">국면 하나만 더 맞았으면 동조단지였을 단지들</a>판정 가능한 국면 중 딱 1개만 어긋나서 탈락한 1,113개 단지의 상위 사례예요.</li><li><a href="insights/why-not-synced.html">동조단지가 없다고 저평가가 아닌 이유</a>탈락 사유의 88%는 안 맞아서가 아니라 거래가 적어서 판정 자체가 안 된 것이었어요.</li><li><a href="insights/sync-rate-by-region.html">대장단지 따라가기, 동네마다 얼마나 통할까</a>신도시형 택지지구는 통과율 70~80%대인데, 강남3구는 오히려 10% 안팎이었어요.</li><!--/bake:posts--></ul>
+  <a class="more" href="insights.html">분석 글 전체 보기 →</a>
+</div>
+        </div>
+      </div>
+
       <!-- ===================== REGION PICKER MODAL ===================== -->
       <div class="modal-overlay" id="regionModal">
         <div class="modal-sheet">
@@ -626,6 +685,8 @@
     document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.target===target));
     document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active', s.id===target));
     window.scrollTo(0, 0);  // 이전 화면 스크롤 위치가 남아서 새 화면이 하단부터 보이는 문제 방지
+    setSheet(false);
+    document.getElementById('infoSheet').hidden = target !== 'dashboard';
   }
   document.querySelectorAll('.tab').forEach(tab=>{
     tab.addEventListener('click', ()=>{
@@ -638,6 +699,42 @@
     });
   });
   // 광고 인터스티셜은 AdSense 심사 중 '준비 안 된 사이트' 신호라 제거(2026-10-14). 승인 후 필요하면 git 이력에서 복구.
+  // ---------- 대시보드 바텀시트 ----------
+  const infoSheet = document.getElementById('infoSheet');
+  const sheetGrip = document.getElementById('sheetGrip');
+  const sheetBackdrop = document.getElementById('sheetBackdrop');
+  function setSheet(open){
+    infoSheet.classList.toggle('open', open);
+    sheetBackdrop.classList.toggle('show', open);
+    sheetGrip.setAttribute('aria-expanded', open);
+    infoSheet.style.transform = '';
+  }
+  let dragStartY = null, dragDY = 0;
+  sheetGrip.addEventListener('pointerdown', e=>{
+    dragStartY = e.clientY; dragDY = 0;
+    sheetGrip.setPointerCapture(e.pointerId);
+    infoSheet.classList.add('dragging');
+  });
+  sheetGrip.addEventListener('pointermove', e=>{
+    if(dragStartY===null) return;
+    dragDY = e.clientY - dragStartY;
+    const open = infoSheet.classList.contains('open');
+    const closedY = infoSheet.offsetHeight - 64;
+    const y = Math.min(closedY, Math.max(0, (open ? 0 : closedY) + dragDY));
+    infoSheet.style.transform = `translateY(${y}px)`;
+  });
+  sheetGrip.addEventListener('pointerup', ()=>{
+    if(dragStartY===null) return;
+    infoSheet.classList.remove('dragging');
+    const open = infoSheet.classList.contains('open');
+    // 살짝 움직인 건 탭으로 보고 토글, 40px 넘게 끌면 끈 방향으로
+    if(Math.abs(dragDY) < 8) setSheet(!open);
+    else setSheet(dragDY < -40 ? true : dragDY > 40 ? false : open);
+    dragStartY = null;
+  });
+  sheetGrip.addEventListener('pointercancel', ()=>{ infoSheet.classList.remove('dragging'); dragStartY = null; setSheet(infoSheet.classList.contains('open')); });
+  sheetBackdrop.addEventListener('click', ()=> setSheet(false));
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && infoSheet.classList.contains('open')) setSheet(false); });
   document.getElementById('ctaToList').addEventListener('click', ()=> goToScreen('list'));
   document.getElementById('backToDashboard').addEventListener('click', ()=> goToScreen('dashboard'));
   document.getElementById('backToList').addEventListener('click', ()=> goToScreen('list'));
@@ -1121,29 +1218,6 @@
     await loadRegion(pipelineData.defaultRegion);
   })();
 </script>
-
-<section class="static-intro">
-<div class="card">
-  <div class="eyebrow">ABOUT</div>
-  <h2>키맞추기는 이런 서비스예요</h2>
-  <p>아파트 시장에는 그 동네 가격 흐름을 먼저 보여주는 '대장단지'가 있어요. 대장단지가 오르면 같은 생활권의 다른 단지도 시차를 두고 따라 오르는 경우가 많은데, 이걸 흔히 '키맞추기'라고 불러요. 이 서비스는 그 통념이 실제 거래에서도 맞는지를 국토교통부 실거래가 공개 데이터로 확인해요.</p>
-  <p>비교는 정책 국면별로 나눠서 해요. 2017년 이후를 규제강화기·급등기·하락기·회복기·재규제기 다섯 구간으로 자르고, 각 구간 안에서 대장단지와 같은 방향으로, 비슷한 폭만큼 움직였는지를 따져요. 여러 국면에서 꾸준히 같이 움직였는데 지금 가격 차이(갭)가 벌어져 있다면, 아직 따라가지 못한 단지일 수 있다는 뜻이에요.</p>
-  <p>같은 단지라도 59㎡와 84㎡는 사실상 다른 시장이라 평형은 섞지 않아요. 거래가 적은 달은 증여성 저가 거래 같은 이상치를 걸러내고, 판정에 쓰기엔 거래가 부족한 국면은 '판정불가'로 따로 표시해요. 자세한 기준은 <a href="about.html">About</a>에 정리해 뒀어요.</p>
-</div>
-
-<div class="card">
-  <div class="eyebrow">TODAY</div>
-  <h2 id="staticSnapshotTitle">오늘의 분석: 서울 강남구 대치동 84㎡</h2>
-  <div id="staticSnapshot"><!--bake:snapshot--><p>서울 강남구 대치동 84㎡의 대장단지는 <b>래미안대치팰리스</b>예요. 최근 대표가는 44.0억이고, 2017년 5월 대비 +163.5% 움직였어요. 이 대장단지와 국면별로 같이 움직인 동조단지는 7곳이에요.</p><table><thead><tr><th>단지</th><th>최근가</th><th>대장 대비 갭</th><th>동조 국면</th></tr></thead><tbody><tr><td>한보미도맨션1</td><td>40.4억</td><td>−3.6억</td><td>2/3</td></tr><tr><td>은마</td><td>39.0억</td><td>−5.0억</td><td>3/4</td></tr><tr><td>선경1차(1동-7동)</td><td>37.0억</td><td>−7.0억</td><td>2/3</td></tr><tr><td>쌍용대치아파트1동,2동,3동,5동,6동</td><td>36.0억</td><td>−8.0억</td><td>2/4</td></tr><tr><td>쌍용대치2</td><td>34.9억</td><td>−9.2억</td><td>2/3</td></tr><tr><td>대치현대</td><td>30.2억</td><td>−13.8억</td><td>2/3</td></tr><tr><td>현대1</td><td>25.1억</td><td>−18.9억</td><td>3/3</td></tr></tbody></table><p>'동조 국면'은 거래가 충분해 판정 가능했던 국면 중 대장단지와 같이 움직인 국면 수예요. 갭이 큰데 동조 국면이 많은 단지일수록 대장단지를 아직 덜 따라간 단지일 수 있어요.</p><!--/bake:snapshot--></div>
-</div>
-
-<div class="card">
-  <div class="eyebrow">INSIGHTS</div>
-  <h2>최근 분석 글</h2>
-  <ul id="staticPosts"><!--bake:posts--><li><a href="insights/daechi-leader-and-7.html">대치동 84㎡, 래미안대치팰리스를 따라 움직인 단지 7곳</a>후보 35곳 중 7곳이 동조단지로 통과했어요. 급등기엔 대장단지가 오히려 덜 올랐어요.</li><li><a href="insights/regime-divergence.html">급등기엔 다 같이, 회복기엔 셋 중 하나는 반대로</a>국면마다 대장단지와 반대로 움직인 비율이 크게 달랐어요 — 급등기 1%, 회복기 31.5%.</li><li><a href="insights/one-regime-away.html">국면 하나만 더 맞았으면 동조단지였을 단지들</a>판정 가능한 국면 중 딱 1개만 어긋나서 탈락한 1,113개 단지의 상위 사례예요.</li><li><a href="insights/why-not-synced.html">동조단지가 없다고 저평가가 아닌 이유</a>탈락 사유의 88%는 안 맞아서가 아니라 거래가 적어서 판정 자체가 안 된 것이었어요.</li><li><a href="insights/sync-rate-by-region.html">대장단지 따라가기, 동네마다 얼마나 통할까</a>신도시형 택지지구는 통과율 70~80%대인데, 강남3구는 오히려 10% 안팎이었어요.</li><!--/bake:posts--></ul>
-  <a class="more" href="insights.html">분석 글 전체 보기 →</a>
-</div>
-</section>
 
 <footer style="text-align:center; padding:24px 0 40px; font-size:12px; color:#888;">
   <a href="about.html" style="color:inherit; text-decoration:underline;">About</a>
