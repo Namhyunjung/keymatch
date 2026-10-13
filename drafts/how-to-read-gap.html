@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>갭 지표 읽는 법: 숫자가 크다고 다 기회는 아니에요 | 키맞추기 Insights</title>
+<meta name="description" content="키맞추기의 '갭'은 대장단지와 지금 가격 차이예요. 수도권 84㎡ 동조단지 1,979쌍의 갭 분포와 함께, 갭을 볼 때 같이 확인해야 할 것들을 정리했어요.">
+<link rel="canonical" href="https://keymatch-steel.vercel.app/insights/how-to-read-gap.html">
+<meta name="robots" content="noindex,nofollow">
+<meta name="google-adsense-account" content="ca-pub-6787031668536428">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6787031668536428"
+     crossorigin="anonymous"></script>
+<style>
+  :root{ --bg:#EEF1F6; --indigo:#26326B; --text:#1c2140; --muted:#666; --brick:#B24A3D; }
+  *{ box-sizing:border-box; }
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'Pretendard',-apple-system,sans-serif;
+    max-width:640px; margin:0 auto; padding:40px 20px 80px;
+    line-height:1.7; font-size:15px;
+  }
+  h1{ font-size:1.3rem; margin-bottom:4px; }
+  .meta{ color:var(--muted); font-size:.85rem; margin-bottom:32px; font-family:'IBM Plex Mono', monospace; }
+  h2{ font-size:1.02rem; margin-top:28px; margin-bottom:8px; color:var(--indigo); }
+  p, li{ color:var(--text); }
+  a{ color:var(--indigo); }
+  .back{ display:inline-block; margin-bottom:24px; color:var(--muted); text-decoration:none; font-size:.85rem; }
+  .table-wrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; margin:12px 0; font-size:.86rem; }
+  th, td{ text-align:left; padding:7px 8px; border-bottom:1px solid #dfe3ec; white-space:nowrap; }
+  td:nth-child(n+2), th:nth-child(n+2){ text-align:right; font-family:'IBM Plex Mono', monospace; }
+  th{ color:var(--muted); font-weight:600; font-size:.78rem; font-family:inherit !important; }
+  tr.leader td{ font-weight:700; background:#fff; }
+  .off{ color:var(--brick); }
+  .na{ color:#aaa; }
+  .stat-row{ display:flex; gap:10px; margin:16px 0; flex-wrap:wrap; }
+  .stat{ flex:1; min-width:120px; background:#fff; border:1px solid #dfe3ec; border-radius:12px; padding:14px; text-align:center; }
+  .stat .n{ font-size:1.3rem; font-weight:800; color:var(--indigo); font-family:'IBM Plex Mono', monospace; }
+  .stat .l{ font-size:.76rem; color:var(--muted); margin-top:4px; }
+  .callout{ background:#fff; border:1px solid #dfe3ec; border-radius:12px; padding:14px 16px; margin:16px 0; font-size:.9rem; }
+  .note{ font-size:.82rem; color:var(--muted); }
+</style>
+</head>
+<body>
+  <a class="back" href="../insights.html">‹ Insights 목록으로</a>
+  <h1>갭 지표 읽는 법: 숫자가 크다고 다 기회는 아니에요</h1>
+  <div class="meta">{{DATE}}</div>
+
+  <p>키맞추기 동조단지 목록에서 가장 먼저 눈에 들어오는 숫자는 단지 이름 옆의 '갭'이에요. −5.0억, −18.9억 같은 숫자를 보면 "이만큼 싸다는 건가?" 싶어지는데, 갭은 그렇게 단순하게 읽으면 안 되는 지표예요. 이 글에서는 갭이 정확히 무엇을 계산한 값인지, 실제 분포는 어떤지, 그리고 갭을 볼 때 꼭 같이 확인해야 할 것들을 정리했어요.</p>
+
+  <h2>갭은 '지금 가격 차이' 하나만 뜻해요</h2>
+  <p>갭은 동조단지의 최근 대표가에서 대장단지의 최근 대표가를 뺀 값이에요. 대표가는 그 달 거래 중 증여성 저가 거래 같은 이상치를 걸러낸 뒤 남은 거래의 최고가예요. 예를 들어 대치동 84㎡에서 대장단지 래미안대치팰리스가 44.0억이고 은마가 39.0억이면, 은마의 갭은 −5.0억이에요.</p>
+  <p>중요한 건 갭이 <b>국면별 동조 판정과는 완전히 별개의 지표</b>라는 점이에요. 동조 판정은 "과거 국면들에서 같은 방향으로, 비슷한 폭만큼 움직였나"를 보고, 갭은 "지금 이 순간 가격이 얼마나 차이 나나"만 봐요. 키맞추기가 주목하는 건 이 둘의 조합이에요. 흐름은 같이 탔는데 가격 차이는 벌어져 있는 단지요.</p>
+
+  <h2>실제 갭은 어느 정도일까</h2>
+  <p>서울·경기·인천 84㎡에서 동조단지로 통과한 대장단지-후보 쌍 1,979개의 갭을 모아 봤어요.</p>
+  <div class="stat-row">
+    <div class="stat"><div class="n">−1.8억</div><div class="l">갭 중앙값</div></div>
+    <div class="stat"><div class="n">−3.4 ~ −0.8억</div><div class="l">가운데 50% 범위</div></div>
+    <div class="stat"><div class="n">138쌍</div><div class="l">대장단지보다<br>비싼 동조단지 (7%)</div></div>
+  </div>
+  <p>절반의 동조단지는 대장단지보다 1.8억 이상 싸고, 가운데 50%는 0.8억~3.4억 아래에 몰려 있어요. 대치동의 −18.9억(현대1) 같은 숫자는 수도권 전체로 보면 꽤 이례적인 값이에요. 동네 전체 가격대가 높으면 갭도 억 단위로 커지기 때문에, 다른 동네의 갭과 금액만으로 비교하는 건 의미가 적어요.</p>
+
+  <h2>갭이 플러스인 동조단지도 있어요</h2>
+  <p>138쌍(7%)은 갭이 오히려 플러스, 즉 동조단지가 대장단지보다 비싸요. 대장단지가 '지금 가장 비싼 단지'가 아니기 때문이에요. 키맞추기는 다섯 정책 국면마다 평당가 순위를 매기고, 여러 국면에 걸쳐 꾸준히 상위 10% 안에 든 단지를 대장단지로 정해요. 수도권 대장단지 1,394곳(지역×평형) 중 511곳은 다섯 국면 모두 상위 10%에 들었고, 421곳은 네 국면, 327곳은 세 국면이었어요.</p>
+  <p>그래서 최근 몇 달 사이 다른 단지가 반짝 더 비싸게 거래됐다고 대장단지가 바뀌지 않아요. 예를 들어 부천 상동 84㎡의 대장단지는 행복한마을(금호, 8.1억)인데, 동조단지인 진달래마을(효성)은 9.8억으로 갭이 +1.7억이에요. 이런 경우 갭은 '덜 따라간 정도'가 아니라 '지금은 앞서 있는 정도'로 읽어야 해요.</p>
+
+  <h2>갭을 볼 때 같이 확인할 네 가지</h2>
+  <ul>
+    <li><b>동조 국면 수와 분모.</b> 같은 갭이라도 3/4 동조한 단지와 2/4 동조한 단지는 근거의 무게가 달라요. 분모(판정 가능했던 국면 수)가 클수록 흐름이 더 많은 시기에 걸쳐 검증된 거예요.</li>
+    <li><b>준공 연도.</b> 대치동 현대1은 판정된 세 국면을 모두 동조했지만, 1990년 준공으로 대장단지(2015년)와 25년 차이가 나요. 연식 차이에서 오는 가격 차이는 흐름이 같아도 그대로 남을 수 있어요.</li>
+    <li><b>최근 거래월.</b> 대표가는 단지마다 마지막으로 거래가 있었던 달 기준이에요. 대장단지는 9월, 동조단지는 4월 가격이라면 그 사이 시장 변화가 갭에 섞여 있어요. 단지 정보의 '최근 거래' 날짜를 꼭 같이 보세요.</li>
+    <li><b>세대수.</b> 소규모 단지는 거래 몇 건에 대표가가 크게 흔들려요. 세대수가 적은 단지의 큰 갭은 한두 건의 거래가 만든 숫자일 수 있어요.</li>
+  </ul>
+
+  <div class="callout">
+    정리하면: 갭은 "지금 얼마나 차이 나나"만 보여주는 숫자예요. 수도권 84㎡ 동조단지의 갭은 보통 대장단지보다 0.8억~3.4억 아래이고, 7%는 오히려 더 비싸요. 갭이 크다는 건 "왜 차이 나는지 들여다볼 만하다"는 출발점이지, 그 자체로 저평가의 증거는 아니에요.
+  </div>
+
+  <p class="note">수치는 국토교통부 아파트매매 실거래자료를 키맞추기 기준으로 가공한 값이고, 2026년 10월 데이터 기준이에요. 특정 단지의 매수·매도를 권하는 글이 아니에요. 동조 판정 기준은 <a href="../about.html">About</a>, 대치동 사례는 <a href="daechi-leader-and-7.html">대치동 84㎡ 동조단지 7곳</a>에서 볼 수 있어요.</p>
+
+  <p><a href="../index.html">키맞추기에서 직접 확인하기 →</a></p>
+</body>
+</html>

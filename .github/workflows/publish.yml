@@ -1,0 +1,34 @@
+name: publish scheduled insights
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # 매일 09:00 KST — drafts/queue.json에서 발행일 된 글 발행
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 예약 글 발행
+        run: |
+          python publish_drafts.py
+          python bake_default_snapshot.py
+
+      - name: 변경사항 커밋
+        run: |
+          git config user.name "keymatch-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A drafts insights insights.html sitemap.xml index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "auto: publish scheduled insight ($(date -u +%Y-%m-%d))"
+          git pull --rebase
+          git push
